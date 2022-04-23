@@ -43,7 +43,7 @@ int WIDTH = 800;
 int HEIGHT = 600;
 
 // app code
-#include "shader_inventory.c"
+#include "shader_bank.c"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -94,27 +94,51 @@ int main(void)
     int minor_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR);
 	printf("\nOpenGL version %d.%d\n", major_ver, minor_ver);
 
+#if 0
     float vertices[] = {
          -0.5f, -0.5f, 0.0f,
          0.5f, -0.5f, 0.0f,
          0.0f,  0.5f, 0.0f
     };
+#endif
 
-    init_shader_inventory();
+    /* Vertex Buffer */
+    float vertices[] = {
+        0.5f,  0.5f, 0.0f,  // top right
+        0.5f, -0.5f, 0.0f,  // bottom right
+        -0.5f, -0.5f, 0.0f,  // bottom left
+        -0.5f,  0.5f, 0.0f   // top left 
+    };
     
-    unsigned int VBO;   
-    unsigned int VAO; // Create a VAO to store the layout of our attributes
+    /* Index Buffer */    
+    unsigned int indices[] = {  // note that we start from 0!
+        0, 1, 3,   // first triangle
+        1, 2, 3    // second triangle
+    };  
+    
+    init_shader_bank();
 
-    glGenBuffers(1, &VBO);
-    glGenVertexArrays(1, &VAO);
-    
+    // Create a VAO to store the layout of our attributes
+    u32 VBO, VAO, EBO;       
+
+    // Setup VAO
+    glGenVertexArrays(1, &VAO);    
     glBindVertexArray(VAO);
+
+    // Setup VBO
+    glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);        
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (void*)0);
-    glEnableVertexAttribArray(0);    
+    glEnableVertexAttribArray(0);
 
+    // Setup EBO
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);    
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -128,7 +152,7 @@ int main(void)
         
         glUseProgram(shaders.programs[0]);
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
 		
         /* Swap front and back buffers */
         glfwSwapBuffers(window);

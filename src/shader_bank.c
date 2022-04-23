@@ -7,11 +7,9 @@ static u8* paths[][2] = {
 
 /*
 
-  Shader inventory memory layout:
+  Shader bank  memory layout:
   u8*
   time_t: [v1_mod, v2_mod, f1_mod] -- this is the timestamp for last modification
-  u32:    vertex_count
-  u32:    fragment_count
   u32:    gl_handles -- indexed via vertex/fragment_count
   
 */
@@ -22,9 +20,9 @@ typedef struct {
     u32* programs;
     u32* gl_handles;
     
-} shader_inventory;
+} shader_bank;
 
-static shader_inventory shaders = {0};
+static shader_bank shaders = {0};
 
 s32 FILE_size(FILE* fp)
 {
@@ -37,7 +35,7 @@ s32 FILE_size(FILE* fp)
     return result;
 }
 
-static int init_shader_inventory()
+static int init_shader_bank()
 {
 
     shaders.paths = paths;
@@ -45,7 +43,8 @@ static int init_shader_inventory()
     // TODO: Replace malloc/calloc with custom allocator
     shaders.mod = (time_t*)calloc(ArrayCount(shaders.paths)*2, sizeof(time_t));
     shaders.gl_handles = (u32*)calloc(ArrayCount(shaders.paths)*2, sizeof(u32));
-    shaders.programs = (u32*)calloc(ArrayCount(shaders.paths), sizeof(u32));    
+    shaders.programs = (u32*)calloc(ArrayCount(shaders.paths), sizeof(u32));
+    
     u8* shader_src = (u8*)calloc(SHADER_BUFFER_SIZE, sizeof(u8));
     
     // Populate shader inventory    
@@ -65,7 +64,7 @@ static int init_shader_inventory()
             printf("Could not open %s\n", vertex_path);
             fclose(fp_v);
             fclose(fp_f);
-            return 1;
+            continue;
         }
 
         if(!fp_f)
@@ -73,7 +72,7 @@ static int init_shader_inventory()
             printf("Could not open %s\n", fragment_path);
             fclose(fp_v);
             fclose(fp_f);            
-            return 1;
+            continue;
         }
 
         struct stat fstat;
@@ -93,7 +92,7 @@ static int init_shader_inventory()
             printf("Could not evaluate file size for the vertex shader: %s\n", vertex_path);
             fclose(fp_v);
             fclose(fp_f);
-            return 1;
+            continue;
         }
 
         // read vertex shader
@@ -112,7 +111,7 @@ static int init_shader_inventory()
             printf("Could not evaluate file size for the fragment shader: %s\n", fragment_path);
             fclose(fp_v);
             fclose(fp_f);            
-            return 1;
+            continue;
         }
 
         // read fragment shader
@@ -133,19 +132,19 @@ static int init_shader_inventory()
         shaders.programs[(u32)(programme_idx/2)] = shader_program;
 
         glDeleteShader(*vertex_id);
-        glDeleteShader(*fragment_id);
-        
-        free(shader_src);
+        glDeleteShader(*fragment_id);        
         
         fclose(fp_v);
         fclose(fp_f);       
-    }    
+    }
+
+    free(shader_src);
 	
     return 0;
 }
 
 // only reloads shaders if they were changed
-static void reload_shader_inventory()
+static void reload_shader_bank()
 {
     
 }
