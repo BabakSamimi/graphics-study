@@ -54,6 +54,8 @@ void process_input(GLFWwindow* window)
 {
 	if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
+	else if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+	    reload_shader_bank();
 }
 
 int main(void)
@@ -139,6 +141,8 @@ int main(void)
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    f64 start_time = glfwGetTime();
     
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -159,6 +163,16 @@ int main(void)
 		
         /* Poll for and process events */
         glfwPollEvents();
+
+        f64 end_time = glfwGetTime();
+        f64 elapsed = end_time - start_time;
+        
+        if(elapsed > 1.0f)
+        {
+            reload_shader_bank();
+            start_time = glfwGetTime();
+        }                   
+        
     }
 	
     glfwTerminate();
