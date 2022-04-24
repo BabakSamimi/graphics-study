@@ -6,26 +6,20 @@
 
 #define SHADER_BUFFER_SIZE (4*1024)
 
-static u8* paths[][2] = {
-    { "vertex.glsl", "fragment.glsl" },
-    { "vertex.glsl", "fragment.glsl" },
-    { "vertex.glsl", "fragment.glsl" },      
+const char* version_define = "#version 460 core\n";
+const char* vertex_define = "#define VERTEX_SHADER\n";
+const char* fragment_define = "#define FRAGMENT_SHADER\n";
+
+static u8* paths[][1] = {
+    { "default.glsl" },
 };
-
-/*
-
-  Shader bank  memory layout:
-  u8*
-  time_t: [v1_mod, v2_mod, f1_mod] -- this is the timestamp for last modification
-  u32:    gl_handles -- indexed via vertex/fragment_count
-  
-*/
 
 typedef struct {
 
-    u8* (*paths)[2];    
+    u8* (*paths)[1];
     time_t* mod;
     u32* programs;
+    u32 programs_count;
     u32* gl_handles;
     
 } shader_bank;
@@ -43,46 +37,36 @@ s32 FILE_size(FILE* fp)
     return result;
 }
 
+u8* shader_src;
+
 static int init_shader_bank()
 {
-
+    shader_src = (u8*)calloc(SHADER_BUFFER_SIZE, sizeof(u8));
     shaders.paths = paths;
 
     // TODO: Replace malloc/calloc with custom allocator
-    shaders.mod = (time_t*)calloc(ArrayCount(paths)*2, sizeof(time_t));
-    shaders.gl_handles = (u32*)calloc(ArrayCount(paths)*2, sizeof(u32));
-    shaders.programs = (u32*)calloc(ArrayCount(paths), sizeof(u32));
+    shaders.mod = (time_t*)calloc(ArrayCount(paths), sizeof(time_t));
     
+    shaders.programs_count = ArrayCount(paths);
+    shaders.programs = (u32*)calloc(shaders.programs_count, sizeof(u32));
+        
     printf("Rows: %zd\n", ArrayCount(paths));
-    printf("Columns: %zd\n", ArrayCount(paths[0]));
+    printf("Columns: %zd\n", ArrayCount(paths));
     
-    u8* shader_src = (u8*)calloc(SHADER_BUFFER_SIZE, sizeof(u8));
-    
-    // Populate shader inventory    
+    // Populate shader inventory
 
-    for(u8 programme_idx = 0;
-        programme_idx == ArrayCount(shaders.paths);
-        programme_idx += 2)
+    for(u8 idx = 0;
+        idx < shaders.programs_count;
+        idx++)
     {
         
-        char* vertex_path = shaders.paths[programme_idx][0];
-        char* fragment_path = shaders.paths[programme_idx][1];
-        FILE* fp_v = fopen(vertex_path, "rb");
-        FILE* fp_f = fopen(fragment_path, "rb");
+        char* shader_path = shaders.paths[idx][0];     
+        FILE* fp = fopen(shader_path, "rb");
 
-        if(!fp_v)
+        if(!fp)
         {
-            printf("Could not open %s\n", vertex_path);
-            fclose(fp_v);
-            fclose(fp_f);
-            continue;
-        }
-
-        if(!fp_f)
-        {
-            printf("Could not open %s\n", fragment_path);
-            fclose(fp_v);
-            fclose(fp_f);            
+            printf("Could not open %s\n", shader_path);
+            fclose(fp);            
             continue;
         }
 
@@ -91,99 +75,116 @@ static int init_shader_bank()
         s32 bytes_read;
             
         // save last modification
-        stat(vertex_path, &fstat);
-        shaders.mod[programme_idx] = fstat.st_mtime;
-        stat(fragment_path, &fstat);
-        shaders.mod[programme_idx+1] = fstat.st_mtime;
+        stat(shader_path, &fstat);
+        shaders.mod[idx] = fstat.st_mtime;
 
         // read the shaders and compile
-        file_size = FILE_size(fp_v);
+        file_size = FILE_size(fp);
         if (file_size == -1L)
         {
-            printf("Could not evaluate file size for the vertex shader: %s\n", vertex_path);
-            fclose(fp_v);
-            fclose(fp_f);
+            printf("Could not evaluate file size for the shader: %s\n", shader_path);
+            fclose(fp);
             continue;
         }
 
-        // read vertex shader
-        bytes_read = fread((void*)shader_src, sizeof(u8), file_size, fp_v);        
+        // read shader file
+        bytes_read = fread((void*)shader_src, sizeof(u8), file_size, fp);
+        fclose(fp);
+
+        const char* const vertex_src[] = { version_define, vertex_define, shader_src };
+        const char* const fragment_src[] = { version_define, fragment_define, shader_src };
         
         // compile vertex shader
-        u32* vertex_id = &shaders.gl_handles[programme_idx];
-        *vertex_id = glCreateShader(GL_VERTEX_SHADER);
+        u32 vertex_id = glCreateShader(GL_VERTEX_SHADER);
         
-        glShaderSource(*vertex_id, 1, &shader_src, &file_size);
-        glCompileShader(*vertex_id);
-        
-        file_size = FILE_size(fp_f);
-        if (file_size == -1L)
+        glShaderSource(vertex_id, 3, vertex_src, 0);
+        glCompileShader(vertex_id);
+
+        s32 vertex_compiled = 0;
         {
-            printf("Could not evaluate file size for the fragment shader: %s\n", fragment_path);
-            fclose(fp_v);
-            fclose(fp_f);            
-            continue;
+            char shader_log[1024];
+            glGetShaderiv(vertex_id, GL_COMPILE_STATUS, &vertex_compiled);
+            if(!vertex_compiled)
+            {
+                glGetShaderInfoLog(vertex_id, 1024, 0, shader_log);            
+                printf("Vertex shader %s failed! Reason:", shader_path);
+                printf("%s\n", shader_log);
+            }
+        }                        
+         
+        // compile fragment shader
+        u32 fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
+        
+        glShaderSource(fragment_id, 3, fragment_src, 0);
+        glCompileShader(fragment_id);
+        
+        s32 fragment_compiled = 0;
+        {
+            char shader_log[1024];
+            glGetShaderiv(fragment_id, GL_COMPILE_STATUS, &fragment_compiled);
+            if(!fragment_compiled)
+            {
+                glGetShaderInfoLog(fragment_id, 1024, 0, shader_log);            
+                printf("Fragment shader %s failed! Reason:", shader_path);
+                printf("%s\n", shader_log);
+            }
         }
 
-        // read fragment shader
-        bytes_read = fread((void*)shader_src, sizeof(u8), file_size, fp_f);
-        
-        // compile fragment shader
-        u32* fragment_id = &shaders.gl_handles[programme_idx+1];
-        *fragment_id = glCreateShader(GL_FRAGMENT_SHADER);
-        
-        glShaderSource(*fragment_id, 1, &shader_src, &file_size);
-        glCompileShader(*fragment_id);
+        // If one of them failed, don't even try to link them together
+        if(!vertex_compiled || !fragment_compiled)
+        {            
 
+            glDeleteShader(vertex_id);
+            glDeleteShader(fragment_id);                    
+            continue;
+        }
+                
         u32 shader_program = glCreateProgram();
-        glAttachShader(shader_program, *vertex_id);
-        glAttachShader(shader_program, *fragment_id);
+        glAttachShader(shader_program, vertex_id);
+        glAttachShader(shader_program, fragment_id);
         glLinkProgram(shader_program);
+                
+        {
+            s32 program_linked;
+            char program_log[1024];
+            glGetProgramiv(shader_program, GL_LINK_STATUS, &program_linked);
+            if(!program_linked)
+            {
+                glGetProgramInfoLog(shader_program, 1024, 0, program_log);            
+                printf("Linking failed for %s! Reason:", shader_path);
+                printf("%s\n", program_log);
+            }
+            else
+                shaders.programs[idx] = shader_program;
+        }
         
-        shaders.programs[(u32)(programme_idx/2)] = shader_program;
-
-        glDeleteShader(*vertex_id);
-        glDeleteShader(*fragment_id);        
-        
-        fclose(fp_v);
-        fclose(fp_f);       
+        glDeleteShader(vertex_id);
+        glDeleteShader(fragment_id);        
+     
     }
 
-    free(shader_src);
+    //free(shader_src);
 	
-    return 0;
+    return 0;    
 }
 
-// only reloads shaders if they were changed
 static int reload_shader_bank()
-{    
-    u8* shader_src = (u8*)calloc(SHADER_BUFFER_SIZE, sizeof(u8));
+{
     
-    // Populate shader inventory    
+    // Populate shader inventory
 
-    for(u8 programme_idx = 0;
-        programme_idx == ArrayCount(shaders.paths);
-        programme_idx += 2)
+    for(u8 idx = 0;
+        idx < shaders.programs_count;
+        idx++)
     {
         
-        char* vertex_path = shaders.paths[programme_idx][0];
-        char* fragment_path = shaders.paths[programme_idx][1];
-        FILE* fp_v = fopen(vertex_path, "rb");
-        FILE* fp_f = fopen(fragment_path, "rb");
+        char* shader_path = shaders.paths[idx][0];     
+        FILE* fp = fopen(shader_path, "rb");
 
-        if(!fp_v)
+        if(!fp)
         {
-            printf("Could not open %s\n", vertex_path);
-            fclose(fp_v);
-            fclose(fp_f);
-            continue;
-        }
-
-        if(!fp_f)
-        {
-            printf("Could not open %s\n", fragment_path);
-            fclose(fp_v);
-            fclose(fp_f);            
+            printf("Could not open %s\n", shader_path);
+            fclose(fp);            
             continue;
         }
 
@@ -193,92 +194,107 @@ static int reload_shader_bank()
         u32 shader_changed = 0;
             
         // save last modification
-        stat(vertex_path, &fstat);
-        if(fstat.st_mtime > shaders.mod[programme_idx])
+        stat(shader_path, &fstat);
+        if(fstat.st_mtime > shaders.mod[idx])
         {
-            shaders.mod[programme_idx] = fstat.st_mtime;
+            shaders.mod[idx] = fstat.st_mtime;
             shader_changed = 1;
         }
-        
-        stat(fragment_path, &fstat);
-        if(fstat.st_mtime > shaders.mod[programme_idx+1])
-        {
-            shaders.mod[programme_idx] = fstat.st_mtime;
-            shader_changed = shader_changed ? 3 : 2;
-        }
 
-        if(!shader_changed) {
-            
-            fclose(fp_v);
-            fclose(fp_f);
+        if(!shader_changed)
+        {                     
+            fclose(fp);
             continue;
         }
 
         // read the shaders and compile
-        file_size = FILE_size(fp_v);
+        file_size = FILE_size(fp);
         if (file_size == -1L)
         {
-            printf("Could not evaluate file size for the vertex shader: %s\n", vertex_path);
-            fclose(fp_v);
-            fclose(fp_f);
+            printf("Could not evaluate file size for the shader: %s\n", shader_path);
+            fclose(fp);
             continue;
         }
 
-        // TODO: If compilation failed for either of the shaders, continue to next loop
-        
-        // read vertex shader
-        bytes_read = fread((void*)shader_src, sizeof(u8), file_size, fp_v);        
+        // read shader file
+        bytes_read = fread((void*)shader_src, sizeof(u8), file_size, fp);
+        fclose(fp);
+
+        const char* const vertex_src[] = { version_define, vertex_define, shader_src };
+        const char* const fragment_src[] = { version_define, fragment_define, shader_src };
         
         // compile vertex shader
-        u32* vertex_id = &shaders.gl_handles[programme_idx];
-        *vertex_id = glCreateShader(GL_VERTEX_SHADER);
+        u32 vertex_id = glCreateShader(GL_VERTEX_SHADER);
         
-        glShaderSource(*vertex_id, 1, &shader_src, &file_size);
-        glCompileShader(*vertex_id);
-        
-        file_size = FILE_size(fp_f);
-        if (file_size == -1L)
+        glShaderSource(vertex_id, 3, vertex_src, 0);
+        glCompileShader(vertex_id);
+
+        s32 vertex_compiled = 0;
         {
-            printf("Could not evaluate file size for the fragment shader: %s\n", fragment_path);
-            fclose(fp_v);
-            fclose(fp_f);            
-            continue;
+            char shader_log[1024];
+            glGetShaderiv(vertex_id, GL_COMPILE_STATUS, &vertex_compiled);
+            if(!vertex_compiled)
+            {
+                glGetShaderInfoLog(vertex_id, 1024, 0, shader_log);            
+                printf("Vertex shader %s failed! Reason:", shader_path);
+                printf("%s\n", shader_log);
+            }
+        }                        
+         
+        // compile fragment shader
+        u32 fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
+        
+        glShaderSource(fragment_id, 3, fragment_src, 0);
+        glCompileShader(fragment_id);
+        
+        s32 fragment_compiled = 0;
+        {
+            char shader_log[1024];
+            glGetShaderiv(fragment_id, GL_COMPILE_STATUS, &fragment_compiled);
+            if(!fragment_compiled)
+            {
+                glGetShaderInfoLog(fragment_id, 1024, 0, shader_log);            
+                printf("Fragment shader %s failed! Reason:", shader_path);
+                printf("%s\n", shader_log);
+            }
         }
 
-        // read fragment shader
-        bytes_read = fread((void*)shader_src, sizeof(u8), file_size, fp_f);
-        
-        // compile fragment shader
-        u32* fragment_id = &shaders.gl_handles[programme_idx+1];
-        *fragment_id = glCreateShader(GL_FRAGMENT_SHADER);
-        
-        glShaderSource(*fragment_id, 1, &shader_src, &file_size);
-        glCompileShader(*fragment_id);
+        // If one of them failed, don't even try to link them together
+        if(!vertex_compiled || !fragment_compiled)
+        {            
 
+            glDeleteShader(vertex_id);
+            glDeleteShader(fragment_id);                    
+            continue;
+        }
+                
         u32 shader_program = glCreateProgram();
-        glAttachShader(shader_program, *vertex_id);
-        glAttachShader(shader_program, *fragment_id);
+        glAttachShader(shader_program, vertex_id);
+        glAttachShader(shader_program, fragment_id);
         glLinkProgram(shader_program);
-
-        // TODO: if link failed, don't replace the current program
-        shaders.programs[(u32)(programme_idx/2)] = shader_program;
-
-        glDeleteShader(*vertex_id);
-        glDeleteShader(*fragment_id);        
+                
+        {
+            s32 program_linked;
+            char program_log[1024];
+            glGetProgramiv(shader_program, GL_LINK_STATUS, &program_linked);
+            if(!program_linked)
+            {
+                glGetProgramInfoLog(shader_program, 1024, 0, program_log);            
+                printf("Linking failed for %s! Reason:", shader_path);
+                printf("%s\n", program_log);
+            }
+            else
+                shaders.programs[idx] = shader_program;
+        }
         
-        fclose(fp_v);
-        fclose(fp_f);
-
-        if(shader_changed == 1)
-            printf("Successfully reloaded %s\n", vertex_path);
-        else if(shader_changed == 2)
-            printf("Successfully reloaded %s\n", fragment_path);
-        else if(shader_changed == 3)
-            printf("Successfully reloaded %s and %s\n", vertex_path, fragment_path);        
+        glDeleteShader(vertex_id);
+        glDeleteShader(fragment_id);
+        
+        printf("Successfully reloaded %s\n", shader_path);
+     
     }
 
-    free(shader_src);
-
+    //free(shader_src);
 	
     return 0;    
 }

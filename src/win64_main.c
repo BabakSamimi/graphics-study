@@ -55,7 +55,9 @@ void process_input(GLFWwindow* window)
 	if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 	else if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
-	    reload_shader_bank();
+    {
+        reload_shader_bank();
+    }
 }
 
 int main(void)
