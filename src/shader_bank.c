@@ -1,8 +1,15 @@
+/*
+
+  TODO: Handle GLSL shader compilation error, for init and reload
+
+*/
+
 #define SHADER_BUFFER_SIZE (4*1024)
 
 static u8* paths[][2] = {
     { "vertex.glsl", "fragment.glsl" },
-    
+    { "vertex.glsl", "fragment.glsl" },
+    { "vertex.glsl", "fragment.glsl" },      
 };
 
 /*
@@ -13,6 +20,7 @@ static u8* paths[][2] = {
   u32:    gl_handles -- indexed via vertex/fragment_count
   
 */
+
 typedef struct {
 
     u8* (*paths)[2];    
@@ -41,9 +49,12 @@ static int init_shader_bank()
     shaders.paths = paths;
 
     // TODO: Replace malloc/calloc with custom allocator
-    shaders.mod = (time_t*)calloc(ArrayCount(shaders.paths)*2, sizeof(time_t));
-    shaders.gl_handles = (u32*)calloc(ArrayCount(shaders.paths)*2, sizeof(u32));
-    shaders.programs = (u32*)calloc(ArrayCount(shaders.paths), sizeof(u32));
+    shaders.mod = (time_t*)calloc(ArrayCount(paths)*2, sizeof(time_t));
+    shaders.gl_handles = (u32*)calloc(ArrayCount(paths)*2, sizeof(u32));
+    shaders.programs = (u32*)calloc(ArrayCount(paths), sizeof(u32));
+    
+    printf("Rows: %zd\n", ArrayCount(paths));
+    printf("Columns: %zd\n", ArrayCount(paths[0]));
     
     u8* shader_src = (u8*)calloc(SHADER_BUFFER_SIZE, sizeof(u8));
     
@@ -213,6 +224,8 @@ static int reload_shader_bank()
             continue;
         }
 
+        // TODO: If compilation failed for either of the shaders, continue to next loop
+        
         // read vertex shader
         bytes_read = fread((void*)shader_src, sizeof(u8), file_size, fp_v);        
         
@@ -246,7 +259,8 @@ static int reload_shader_bank()
         glAttachShader(shader_program, *vertex_id);
         glAttachShader(shader_program, *fragment_id);
         glLinkProgram(shader_program);
-        
+
+        // TODO: if link failed, don't replace the current program
         shaders.programs[(u32)(programme_idx/2)] = shader_program;
 
         glDeleteShader(*vertex_id);
