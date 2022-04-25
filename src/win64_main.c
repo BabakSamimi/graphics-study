@@ -9,7 +9,6 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
 #endif
 
-
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
@@ -20,6 +19,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #include <sys/stat.h> // stat
 #include <time.h> // timespec
 #include <string.h> // memset
+#include <math.h> // sin
 
 #include <stdint.h>
 typedef int8_t s8;
@@ -96,7 +96,7 @@ int main(void)
     printf("Vendor: %s, %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER));
 	int major_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MAJOR);
     int minor_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR);
-	printf("\nOpenGL version %d.%d\n", major_ver, minor_ver);
+	printf("OpenGL version %d.%d\n", major_ver, minor_ver);
 
 #if 0
     float vertices[] = {
@@ -108,10 +108,11 @@ int main(void)
 
     /* Vertex Buffer */
     float vertices[] = {
-        0.5f,  0.5f, 0.0f,  // top right
-        0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f   // top left 
+        // positions        // colors
+        0.5f,  0.5f, 0.0f,  1.0, 0.0, 0.0f, // top right
+        0.5f, -0.5f, 0.0f,  0.0, 1.0, 0.0f, // bottom right
+        -0.5f, -0.5f, 0.0f, 0.0, 0.0, 1.0f,  // bottom left
+        -0.5f,  0.5f, 0.0f,  1.0, 1.0, 0.0f,  // top left 
     };
     
     /* Index Buffer */    
@@ -132,9 +133,13 @@ int main(void)
     // Setup VBO
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);        
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (void*)0);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // Setup vertex attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)(3*sizeof(f32)));
+    glEnableVertexAttribArray(1);
 
     // Setup EBO
     glGenBuffers(1, &EBO);
@@ -155,8 +160,16 @@ int main(void)
         /* Render here */
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-        
+
         glUseProgram(shaders.programs[0]);
+
+        // update uniform
+        f32 time_value = glfwGetTime();
+        f32 green_value = sin(time_value) * sin(time_value);
+        s32 u_color_location = glGetUniformLocation(shaders.programs[0], "u_color");                
+        glUniform4f(u_color_location, 0.0f, green_value, 0.0f, 1.0f);
+
+        // draw quad
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
 		
