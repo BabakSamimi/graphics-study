@@ -18,7 +18,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #include <stdbool.h> // true, false
 #include <sys/stat.h> // stat
 #include <time.h> // timespec
-#include <string.h> // memset
+#include <string.h> // memset, strlen
 #include <math.h> // sin
 
 #include <stdint.h>
@@ -43,6 +43,8 @@ int WIDTH = 800;
 int HEIGHT = 600;
 
 // app code
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 #include "shader_bank.c"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -50,13 +52,18 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	glViewport(0,0, width, height);
 }
 
+s32 reloading_shaders = 0;
+
 void process_input(GLFWwindow* window)
 {
 	if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
-	else if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+	else if(!reloading_shaders && glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
     {
+        reloading_shaders = 1;
+        printf("R!\n");
         reload_shader_bank();
+        reloading_shaders = 0;
     }
 }
 
@@ -98,21 +105,13 @@ int main(void)
     int minor_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR);
 	printf("OpenGL version %d.%d\n", major_ver, minor_ver);
 
-#if 0
-    float vertices[] = {
-         -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-         0.0f,  0.5f, 0.0f
-    };
-#endif
-
     /* Vertex Buffer */
     float vertices[] = {
-        // positions        // colors
-        0.5f,  0.5f, 0.0f,  1.0, 0.0, 0.0f, // top right
-        0.5f, -0.5f, 0.0f,  0.0, 1.0, 0.0f, // bottom right
-        -0.5f, -0.5f, 0.0f, 0.0, 0.0, 1.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f,  1.0, 1.0, 0.0f,  // top left 
+        // positions        // colors        // texture coordinates
+        0.5f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f,  1.0f, 1.0f,   // top right
+        0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,  1.0f, 0.0f,   // bottom right
+        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,  0.0f, 0.0f,  // bottom left
+        -0.5f,  0.5f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f, 1.0f,  // top left 
     };
     
     /* Index Buffer */    
@@ -124,7 +123,7 @@ int main(void)
     init_shader_bank();
 
     // Create a VAO to store the layout of our attributes
-    u32 VBO, VAO, EBO;       
+    u32 VBO, VAO, EBO, texture0, texture1;
 
     // Setup VAO
     glGenVertexArrays(1, &VAO);    
@@ -136,10 +135,12 @@ int main(void)
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     // Setup vertex attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void*)(3*sizeof(f32)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void*)(3*sizeof(f32)));
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void*)(6*sizeof(f32)));
+    glEnableVertexAttribArray(2);
 
     // Setup EBO
     glGenBuffers(1, &EBO);
@@ -149,6 +150,48 @@ int main(void)
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    // Setup Texture    
+    glGenTextures(1, &texture0);
+    glBindTexture(GL_TEXTURE_2D, texture0);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    s32 tex_width, tex_height, nr_channels;
+    u8* tex_data = stbi_load("..\\assets\\container.jpg", &tex_width, &tex_height, &nr_channels, 0);
+    if(tex_data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex_data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else printf("Texture was not loaded.\n");
+
+    glGenTextures(1, &texture1);
+    glBindTexture(GL_TEXTURE_2D, texture1);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    stbi_set_flip_vertically_on_load(true); // this image starts at top left
+    tex_data = stbi_load("..\\assets\\dices.png", &tex_width, &tex_height, &nr_channels, 0);
+    if(tex_data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else printf("Texture was not loaded.\n");
+    
+    stbi_image_free(tex_data);
+
+    // Update texture units in our fragment shader
+    glUseProgram(shaders.programs[0]);
+    glUniform1i(glGetUniformLocation(shaders.programs[0], "texture0"), 0);
+    glUniform1i(glGetUniformLocation(shaders.programs[0], "texture1"), 1);    
+    
     f64 start_time = glfwGetTime();
     
     /* Loop until the user closes the window */
@@ -161,15 +204,23 @@ int main(void)
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+        /* Bind appropiate shaders */
         glUseProgram(shaders.programs[0]);
 
-        // update uniform
+        /* update uniform */
         f32 time_value = glfwGetTime();
-        f32 green_value = sin(time_value) * sin(time_value);
-        s32 u_color_location = glGetUniformLocation(shaders.programs[0], "u_color");                
-        glUniform4f(u_color_location, 0.0f, green_value, 0.0f, 1.0f);
+        s32 u_time_location = glGetUniformLocation(shaders.programs[0], "u_time");        
+        glUniform1f(u_time_location, time_value);
+        glUniform1i(glGetUniformLocation(shaders.programs[0], "texture0"), 0);
+        glUniform1i(glGetUniformLocation(shaders.programs[0], "texture1"), 1);
+        
+        /* bind textures */
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture0);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, texture1);
 
-        // draw quad
+        /* draw quad */
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
 		

@@ -85,16 +85,21 @@ static int init_shader_bank()
 
         // read shader file
         bytes_read = fread((void*)shader_src, sizeof(u8), file_size, fp);
+        shader_src[file_size + 1] = '\0';        
         fclose(fp);
 
-        const char* const vertex_src[] = { version_define, vertex_define, shader_src };
-        const char* const fragment_src[] = { version_define, fragment_define, shader_src };
+        const char* const vertex_src[3] = { version_define, vertex_define, shader_src};
+        const s32 v_length[3] = {strlen(version_define), strlen(vertex_define), file_size};
+        
+        const char* const fragment_src[3] = { version_define, fragment_define, shader_src};
+        const s32 f_length[3] = {strlen(version_define), strlen(fragment_define), file_size};
+                
         char shader_log[SHADER_LOG_SIZE];
                 
         // compile vertex shader
         u32 vertex_id = glCreateShader(GL_VERTEX_SHADER);
         
-        glShaderSource(vertex_id, 3, vertex_src, 0);
+        glShaderSource(vertex_id, 3, vertex_src, v_length);
         glCompileShader(vertex_id);
 
         s32 vertex_compiled = 0;
@@ -109,7 +114,7 @@ static int init_shader_bank()
         // compile fragment shader
         u32 fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
         
-        glShaderSource(fragment_id, 3, fragment_src, 0);
+        glShaderSource(fragment_id, 3, fragment_src, f_length);
         glCompileShader(fragment_id);
         
         s32 fragment_compiled = 0;
@@ -211,31 +216,36 @@ static int reload_shader_bank()
 
         // read shader file
         bytes_read = fread((void*)shader_src, sizeof(u8), file_size, fp);
+        shader_src[file_size + 1] = '\0'; //fread does not append null-terminator
         fclose(fp);
 
-        const char* const vertex_src[] = { version_define, vertex_define, shader_src };
-        const char* const fragment_src[] = { version_define, fragment_define, shader_src };
+        const char* const vertex_src[3] = { version_define, vertex_define, shader_src};
+        const s32 v_length[3] = { strlen(version_define), strlen(vertex_define), file_size };
+        
+        const char* const fragment_src[3] = { version_define, fragment_define, shader_src};
+        const s32 f_length[3] = { strlen(version_define), strlen(fragment_define), file_size };
         char shader_log[1024];
                 
         // compile vertex shader
         u32 vertex_id = glCreateShader(GL_VERTEX_SHADER);
         
-        glShaderSource(vertex_id, 3, vertex_src, 0);
+        glShaderSource(vertex_id, 3, vertex_src, v_length);
         glCompileShader(vertex_id);
 
         s32 vertex_compiled = 0;
         glGetShaderiv(vertex_id, GL_COMPILE_STATUS, &vertex_compiled);        
         if(!vertex_compiled)
         {
-            glGetShaderInfoLog(vertex_id, 1024, 0, shader_log);            
+            glGetShaderInfoLog(vertex_id, 1024, 0, shader_log);          
             printf("Vertex shader %s failed! Reason:", shader_path);
             printf("%s\n", shader_log);
+            printf("This is the code it tried to compile:\n%s%s%s\n", vertex_src[0], vertex_src[1], vertex_src[2]);
         }        
          
         // compile fragment shader
         u32 fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
         
-        glShaderSource(fragment_id, 3, fragment_src, 0);
+        glShaderSource(fragment_id, 3, fragment_src, f_length);
         glCompileShader(fragment_id);
         
         s32 fragment_compiled = 0;
@@ -245,6 +255,7 @@ static int reload_shader_bank()
             glGetShaderInfoLog(fragment_id, 1024, 0, shader_log);            
             printf("Fragment shader %s failed! Reason: ", shader_path);
             printf("%s\n", shader_log);
+            printf("This is the code it tried to compile:\n %s %s %s\n", fragment_src[0], fragment_src[1], fragment_src[2]);
         }
 
         // If one of them failed, don't even try to link them together
