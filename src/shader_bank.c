@@ -12,7 +12,7 @@ const char* vertex_define = "#define VERTEX_SHADER\n";
 const char* fragment_define = "#define FRAGMENT_SHADER\n";
 
 static u8* paths[][1] = {
-    { "default.glsl" },
+    { "src\\default.glsl" },
 };
 
 typedef struct {

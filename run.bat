@@ -1,5 +1,5 @@
 @echo off
 
-pushd src
-..\bin\main.exe
+pushd bin
+main.exe
 popd

@@ -1,18 +1,7 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 __declspec(dllexport) int NvOptimusEnablement = 1;
 __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
-#ifdef __cplusplus
-}
-#endif
-
-#include "glad/glad.h"
-#include "GLFW/glfw3.h"
-
-// CRT
+// CRT 
 #include <stdio.h> // printf, FILE
 #include <stdlib.h> // malloc, calloc
 #include <stdbool.h> // true, false
@@ -20,6 +9,9 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #include <time.h> // timespec
 #include <string.h> // memset, strlen
 #include <math.h> // sin
+
+#include "glad/glad.h"
+#include "GLFW/glfw3.h"
 
 #include <stdint.h>
 typedef int8_t s8;
@@ -45,7 +37,12 @@ int HEIGHT = 600;
 // app code
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+
 #include "shader_bank.c"
+
+#define GFX_MATH_IMPL
+#define GFX_GL
+#include "gfx_math.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -160,7 +157,7 @@ int main(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     s32 tex_width, tex_height, nr_channels;
-    u8* tex_data = stbi_load("..\\assets\\container.jpg", &tex_width, &tex_height, &nr_channels, 0);
+    u8* tex_data = stbi_load("bin\\assets\\container.jpg", &tex_width, &tex_height, &nr_channels, 0);
     if(tex_data)
     {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex_data);
@@ -177,7 +174,7 @@ int main(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     stbi_set_flip_vertically_on_load(true); // this image starts at top left
-    tex_data = stbi_load("..\\assets\\dices.png", &tex_width, &tex_height, &nr_channels, 0);
+    tex_data = stbi_load("bin\\assets\\dices.png", &tex_width, &tex_height, &nr_channels, 0);
     if(tex_data)
     {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data);
@@ -190,7 +187,9 @@ int main(void)
     // Update texture units in our fragment shader
     glUseProgram(shaders.programs[0]);
     glUniform1i(glGetUniformLocation(shaders.programs[0], "texture0"), 0);
-    glUniform1i(glGetUniformLocation(shaders.programs[0], "texture1"), 1);    
+    glUniform1i(glGetUniformLocation(shaders.programs[0], "texture1"), 1);
+
+    u32 transform_location = glGetUniformLocation(shaders.programs[0], "transform");    
     
     f64 start_time = glfwGetTime();
     
@@ -208,11 +207,25 @@ int main(void)
         glUseProgram(shaders.programs[0]);
 
         /* update uniform */
-        f32 time_value = glfwGetTime();
-        s32 u_time_location = glGetUniformLocation(shaders.programs[0], "u_time");        
-        glUniform1f(u_time_location, time_value);
-        glUniform1i(glGetUniformLocation(shaders.programs[0], "texture0"), 0);
-        glUniform1i(glGetUniformLocation(shaders.programs[0], "texture1"), 1);
+        {
+            f32 time_value = glfwGetTime();
+            s32 u_time_location = glGetUniformLocation(shaders.programs[0], "u_time");        
+            glUniform1f(u_time_location, time_value);
+            glUniform1i(glGetUniformLocation(shaders.programs[0], "texture0"), 0);
+            glUniform1i(glGetUniformLocation(shaders.programs[0], "texture1"), 1);
+
+            mat4 trans;
+            vec3 rotation_axis, trans_vec;
+    
+            init_diag_m4(trans, 1.0f);
+            init_v3(&rotation_axis, 0.0f, 0.0f, 1.0f);
+            init_v3(&trans_vec, 0.5f, -0.5f, 0.0f);
+            
+            translate_m4(trans, &trans_vec);            
+            rotate_m4(trans, (float)glfwGetTime(), &rotation_axis);
+            glUniformMatrix4fv(transform_location, 1, GL_FALSE, trans);
+        }
+        
         
         /* bind textures */
         glActiveTexture(GL_TEXTURE0);
@@ -220,6 +233,27 @@ int main(void)
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, texture1);
 
+        /* draw quad */
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
+
+        /* update uniform */
+        {
+
+            mat4 trans;
+            vec3 rotation_axis, trans_vec;
+    
+            init_diag_m4(trans, 1.0f);
+            init_v3(&rotation_axis, 0.0f, 0.0f, 1.0f);
+            init_v3(&trans_vec, -0.5f, 0.5f, 0.0f);
+            
+            scale_m4(trans, 0.5f, 1.33f, 1.0f);            
+            translate_m4(trans, &trans_vec);            
+            rotate_m4(trans, (float)glfwGetTime(), &rotation_axis);
+
+            glUniformMatrix4fv(transform_location, 1, GL_FALSE, trans);
+        }
+        
         /* draw quad */
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer

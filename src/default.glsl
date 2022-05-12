@@ -6,9 +6,11 @@ layout (location = 2) in vec2 a_tex;
 out vec3 vertex_color;
 out vec2 tex_coord;
 
+uniform mat4 transform;
+
 void main()
 {
-    gl_Position = vec4(a_pos.x, a_pos.y, a_pos.z, 1.0);
+    gl_Position = transform * vec4(a_pos, 1.0);
     vertex_color = a_color;
     tex_coord = a_tex;
 }
@@ -34,6 +36,7 @@ void main()
     vec4 texel1 = texture(texture1, tex_coord);
     
     final_color = mix(texel0, texel1, texel1.a*modulating_value); //texture(texture1, tex_coord) * vec4(vertex_color*modulating_value, 1.0);
+    
     
 }
 

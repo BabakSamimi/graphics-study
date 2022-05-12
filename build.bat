@@ -9,7 +9,7 @@ SET INCLUDES=/I %VENDOR_PATH%\GLFW\include /I %VENDOR_PATH%\glad\include
 IF NOT EXIST bin mkdir bin
 pushd bin
 
-del *.pdb > NUL 2> NUL
-cl ..\src\win64_main.c %VENDOR_PATH%\glad\src\glad.c %LIBS% %INCLUDES% -Femain -Zi /MT
+REM del *.pdb > NUL 2> NUL
+cl ..\src\win64_main.c %VENDOR_PATH%\glad\src\glad.c %LIBS% %INCLUDES% -O2 -Femain -Zi /MT
 
 popd
