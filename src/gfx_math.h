@@ -532,9 +532,8 @@ void translate_m4(mat4 out, vec3* translation)
 
 void rotate_m4(mat4 out, float theta, vec3* axis)
 {    
-    mat4 temp;
-
-    mat4 rot;
+    mat4 temp, rot;
+    
     rot[0]  = (float)cos(theta) + SQUARE(axis->x)*(1-(float)cos(theta));
     rot[1]  = axis->y*axis->x*(1-(float)cos(theta)) + axis->z*(float)sin(theta);
     rot[2]  = axis->z*axis->x*(1-(float)cos(theta)) - axis->y*(float)sin(theta);
@@ -565,24 +564,69 @@ void rotate_m4(mat4 out, float theta, vec3* axis)
    inspired by https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/orthographic-projection-matrix
    http://www.songho.ca/opengl/gl_projectionmatrix.html   
 */
-void ortho(mat4 out, float left, float right, float bottom, float top, float near, float far)
+
+void frustum(mat4 out, float l, float r, float t, float b, float n, float f)
 {
-    out[0] = 2.0f / (right-left);
+    out[0] = 2.0f * n / (r - l);
     out[1] = 0.0f;
     out[2] = 0.0f;
     out[3] = 0.0f;
     out[4] = 0.0f;
-    out[5] = 2.0f / (top-bottom);
+    out[5] =  2.0f * n / (t - b);
+    out[6] = 0.0f;
+    out[7] = 0.0f;
+    out[8] = (r + l) / (r - l);
+    out[9] = (t + b) / (t - b);    
+    out[10] = (n + f) / (n - f);
+    out[11] = -1.0f;
+    out[12] = 0.0f;
+    out[13] = 0.0f;
+    out[14] = 2*f*n / (n-f);
+    out[15] = 0.0f;
+}
+
+void ortho(mat4 out, float l, float r, float b, float t, float n, float f)
+{
+    out[0] = 2.0f / (r-l);
+    out[1] = 0.0f;
+    out[2] = 0.0f;
+    out[3] = 0.0f;
+    out[4] = 0.0f;
+    out[5] = 2.0f / (t-b);
     out[6] = 0.0f;
     out[7] = 0.0f;
     out[8] = 0.0f;
     out[9] = 0.0f;    
-    out[10] = - 2.0f / (far - near);
+    out[10] = - 2.0f / (f - n);
     out[11] = 0.0f;
-    out[12] = -(right + left) / (right - left);
-    out[13] = -(top + bottom) / (top - bottom);
-    out[14] = -(far + near) / (far - near);
+    out[12] = -(r + l) / (r - l);
+    out[13] = -(t + b) / (t - b);
+    out[14] = -(f + n) / (f - n);
     out[15] = 1.0f;
+}
+
+/*
+  https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix
+*/
+void perspective(mat4 out, float fov, float aspect, float n, float f)
+{
+    float fov_angle = (float)tan(fov / 2.0f);
+    out[0] = 1.0f / (aspect * fov_angle);
+    out[1] = 0.0f;
+    out[2] = 0.0f;
+    out[3] = 0.0f;
+    out[4] = 0.0f;
+    out[5] =  1.0f / fov_angle;
+    out[6] = 0.0f;
+    out[7] = 0.0f;
+    out[8] = 0.0f;
+    out[9] = 0.0f;
+    out[10] = (n + f) / (n - f);
+    out[11] = -1.0f;
+    out[12] = 0.0f;
+    out[13] = 0.0f;
+    out[14] = 2.0f * f *n / (n-f);
+    out[15] = 0.0f;
 }
 
 #endif

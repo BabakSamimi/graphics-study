@@ -92,6 +92,7 @@ int main(void)
 	gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
 	
 	glViewport(0,0, WIDTH, HEIGHT);
+    glEnable(GL_DEPTH_TEST);
     glfwSwapInterval(1);
 	
 	/* Register GLFW callbacks */
@@ -103,6 +104,7 @@ int main(void)
 	printf("OpenGL version %d.%d\n", major_ver, minor_ver);
 
     /* Vertex Buffer */
+#if 0     
     float vertices[] = {
         // positions        // colors        // texture coordinates
         0.5f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f,  1.0f, 1.0f,   // top right
@@ -110,6 +112,51 @@ int main(void)
         -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,  0.0f, 0.0f,  // bottom left
         -0.5f,  0.5f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f, 1.0f,  // top left 
     };
+#endif
+    
+    float vertices[] = {
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+        0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    };    
     
     /* Index Buffer */    
     unsigned int indices[] = {  // note that we start from 0!
@@ -132,12 +179,12 @@ int main(void)
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     // Setup vertex attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(f32), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void*)(3*sizeof(f32)));
+    //glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void*)(3*sizeof(f32)));
+    //glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(f32), (void*)(3*sizeof(f32)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void*)(6*sizeof(f32)));
-    glEnableVertexAttribArray(2);
 
     // Setup EBO
     glGenBuffers(1, &EBO);
@@ -189,7 +236,9 @@ int main(void)
     glUniform1i(glGetUniformLocation(shaders.programs[0], "texture0"), 0);
     glUniform1i(glGetUniformLocation(shaders.programs[0], "texture1"), 1);
 
-    u32 transform_location = glGetUniformLocation(shaders.programs[0], "transform");    
+    u32 model_loc = glGetUniformLocation(shaders.programs[0], "model");
+    u32 view_loc = glGetUniformLocation(shaders.programs[0], "view");
+    u32 proj_loc = glGetUniformLocation(shaders.programs[0], "projection");    
     
     f64 start_time = glfwGetTime();
     
@@ -201,9 +250,9 @@ int main(void)
 		
         /* Render here */
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        /* Bind appropiate shaders */
+        /* bind appropiate shaders */
         glUseProgram(shaders.programs[0]);
 
         /* update uniform */
@@ -214,16 +263,25 @@ int main(void)
             glUniform1i(glGetUniformLocation(shaders.programs[0], "texture0"), 0);
             glUniform1i(glGetUniformLocation(shaders.programs[0], "texture1"), 1);
 
-            mat4 trans;
+            mat4 model, view, projection;
             vec3 rotation_axis, trans_vec;
-    
-            init_diag_m4(trans, 1.0f);
-            init_v3(&rotation_axis, 0.0f, 0.0f, 1.0f);
-            init_v3(&trans_vec, 0.5f, -0.5f, 0.0f);
+                            
+            /* Rotate in model space */
+            init_diag_m4(model, 1.0f);              
+            init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
+            rotate_m4(model,  (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);
             
-            translate_m4(trans, &trans_vec);            
-            rotate_m4(trans, (float)glfwGetTime(), &rotation_axis);
-            glUniformMatrix4fv(transform_location, 1, GL_FALSE, trans);
+            /* Translate scene forward */
+            init_diag_m4(view, 1.0f);                        
+            init_v3(&trans_vec, 0.0f, 0.0f, -3.0f);                        
+            translate_m4(view, &trans_vec);
+
+            /* Projection */
+            perspective(projection, RADIANS(45.0f), (float)WIDTH/(float)HEIGHT, 0.1f, 100.0f);
+            
+            glUniformMatrix4fv(model_loc, 1, GL_FALSE, model);
+            glUniformMatrix4fv(view_loc, 1, GL_FALSE, view);
+            glUniformMatrix4fv(proj_loc, 1, GL_FALSE, projection);
         }
         
         
@@ -231,32 +289,12 @@ int main(void)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture0);
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texture1);
-
-        /* draw quad */
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
-
-        /* update uniform */
-        {
-
-            mat4 trans;
-            vec3 rotation_axis, trans_vec;
-    
-            init_diag_m4(trans, 1.0f);
-            init_v3(&rotation_axis, 0.0f, 0.0f, 1.0f);
-            init_v3(&trans_vec, -0.5f, 0.5f, 0.0f);
-            
-            scale_m4(trans, 0.5f, 1.33f, 1.0f);            
-            translate_m4(trans, &trans_vec);            
-            rotate_m4(trans, (float)glfwGetTime(), &rotation_axis);
-
-            glUniformMatrix4fv(transform_location, 1, GL_FALSE, trans);
-        }
+        glBindTexture(GL_TEXTURE_2D, texture1);        
         
         /* draw quad */
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
 		
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
