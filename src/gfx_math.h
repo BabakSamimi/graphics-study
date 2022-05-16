@@ -53,6 +53,7 @@ void scale_v3(vec3* out, float scalar);
 float dot_v3(vec3* a, vec3* b);
 void cross_v3(vec3* out, vec3* a, vec3* b);
 float length_v3(vec3* a);
+void normalize_v3(vec3* a);
 
 void init_v4(vec4* out, float x, float y, float z, float w);
 void copy_v4(vec4* out, vec4* target);
@@ -104,8 +105,6 @@ void rotate_m4(mat4 out, float theta, vec3* axis);
 #endif
 
 #ifdef GFX_MATH_IMPL
-
-#ifdef GFX_GL
 
 #include <math.h>
 #define SQRT_F(N) (float)sqrt(N)
@@ -217,7 +216,7 @@ float dot_v3(vec3* a, vec3* b)
     return (a->x * b->x) + (a->y * b->y) + (a->z * b->z);
 }
 
-void cross_v3(vec3* a, vec3* b, vec3* out)
+void cross_v3(vec3* out, vec3* a, vec3* b)
 {
     out->x = a->y*b->z - a->z*b->y;
     out->y = a->z*b->x - a->x*b->z;
@@ -227,6 +226,14 @@ void cross_v3(vec3* a, vec3* b, vec3* out)
 float length_v3(vec3* a)
 {
     return SQRT_F((a->x * a->x) + (a->y * a->y) + (a->z * a->z));
+}
+
+void normalize_v3(vec3* a)
+{
+    float length = length_v3(a);
+    a->x /= length;
+    a->y /= length;
+    a->z /= length;    
 }
 
 /*
@@ -629,5 +636,34 @@ void perspective(mat4 out, float fov, float aspect, float n, float f)
     out[15] = 0.0f;
 }
 
-#endif
+void look_at(mat4 out, vec3* cam_pos, vec3* at, vec3* up)
+{
+    vec3 z_axis, x_axis, y_axis;
+    
+    sub_v3(&z_axis, cam_pos, at);    
+    normalize_v3(&z_axis);
+    
+    cross_v3(&x_axis, &z_axis, up);
+    normalize_v3(&x_axis);
+
+    cross_v3(&y_axis, &x_axis, &z_axis);
+    
+    out[0] = x_axis.x;
+    out[1] = y_axis.x;
+    out[2] = z_axis.x;
+    out[3] = 0.0f;
+    out[4] = x_axis.y;
+    out[5] = y_axis.y;
+    out[6] = z_axis.y;
+    out[7] = 0.0f;
+    out[8] = x_axis.z;
+    out[9] = y_axis.z;
+    out[10] = z_axis.z;
+    out[11] = 0.0f;    
+    out[12] = -dot_v3(&x_axis, cam_pos);
+    out[13] = -dot_v3(&y_axis, cam_pos);
+    out[14] = -dot_v3(&z_axis, cam_pos);    
+    out[15] = 1.0f;    
+}
+
 #endif
