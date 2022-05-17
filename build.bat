@@ -10,6 +10,6 @@ IF NOT EXIST bin mkdir bin
 pushd bin
 
 REM del *.pdb > NUL 2> NUL
-cl ..\src\win64_main.c %VENDOR_PATH%\glad\src\glad.c %LIBS% %INCLUDES% -O2 -Femain -Zi /MT
+cl ..\src\*.c %VENDOR_PATH%\glad\src\glad.c %LIBS% %INCLUDES% -O2 -Femain -Zi /MT
 
 popd

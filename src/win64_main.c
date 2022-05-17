@@ -2,12 +2,8 @@ __declspec(dllexport) int NvOptimusEnablement = 1;
 __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 // CRT 
-#include <stdio.h> // printf, FILE
-#include <stdlib.h> // malloc, calloc
+#include <stdio.h> // printf
 #include <stdbool.h> // true, false
-#include <sys/stat.h> // stat
-#include <time.h> // timespec
-#include <string.h> // memset, strlen
 #include <math.h> // sin
 
 #include "glad/glad.h"
@@ -39,40 +35,60 @@ float FOV = 90.0f;
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#include "shader_bank.c"
+#include "shader_bank.h"
 
 #define GFX_MATH_IMPL
 #include "gfx_math.h"
 
+#include "camera.h"
+
 #define PRESSED(KEY) (glfwGetKey(window, KEY) == GLFW_PRESS)
+
+typedef struct
+{
+    float delta_time;
+    float last_frame;
+    float fov;
+    
+    double mouse_x;
+    double mouse_last_x;
+    double mouse_y;
+    double mouse_last_y;
+
+    int reloading_shaders;
+    
+} AppState;
+
+AppState state;
+extern ShaderBank shaders;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0,0, width, height);
 }
 
-s32 reloading_shaders = 0;
-
 void process_input(GLFWwindow* window)
 {
-	if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+	if(PRESSED(GLFW_KEY_ESCAPE))
 		glfwSetWindowShouldClose(window, true);
-	else if(!reloading_shaders && glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+	else if(!state.reloading_shaders && PRESSED(GLFW_KEY_R))
     {
-        reloading_shaders = 1;
+        state.reloading_shaders = 1;
         printf("R!\n");
         reload_shader_bank();
-        reloading_shaders = 0;
+        state.reloading_shaders = 0;
     }
 }
 
 void scroll_callback(GLFWwindow* window, double x_offset, double y_offset)
 {
-    FOV -= (float)y_offset;
+    state.fov -= (float)y_offset;
     if (FOV < 1.0f)
         FOV = 1.0f;
     if (FOV > 120.0f)
-        FOV = 120.0f; 
+        FOV = 120.0f;
+
+    printf("New FOV Value: %.2f\n", state.fov);
 }
 
 int main(void)
@@ -178,7 +194,7 @@ int main(void)
     };  
     
     init_shader_bank();
-
+    
     // Create a VAO to store the layout of our attributes
     u32 VBO, VAO, EBO, texture0, texture1;
 
@@ -249,43 +265,43 @@ int main(void)
 
     u32 model_loc = glGetUniformLocation(shaders.programs[0], "model");
     u32 view_loc = glGetUniformLocation(shaders.programs[0], "view");
-    u32 proj_loc = glGetUniformLocation(shaders.programs[0], "projection");        
+    u32 proj_loc = glGetUniformLocation(shaders.programs[0], "projection");
 
-    vec3 cam_pos, cam_dir, cam_up;
+    state.delta_time = 0.0f;
+    state.last_frame = 0.0f;
+    state.fov = 90.0f;
 
-    float pitch = 0.0f;
-    float yaw = -90.0f;    
+    state.mouse_x = 0.0f;
+    state.mouse_y = 0.0f;
+    state.mouse_last_x = (float)WIDTH / 2.0f;
+    state.mouse_last_y = (float)HEIGHT / 2.0f;
 
-    init_v3(&cam_pos, 0.0f, 0.0f, 5.0f);
-    init_v3(&cam_dir, 0.0f, 0.0f, -1.0f);
-    init_v3(&cam_up, 0.0f, 1.0f, 0.0f);        
+    Camera cam;
+    {    
+        vec3 cam_pos, cam_dir, cam_up;
+
+        init_v3(&cam_pos, 0.0f, 0.0f, 5.0f);
+        init_v3(&cam_dir, 0.0f, 0.0f, -1.0f);
+        init_v3(&cam_up, 0.0f, 1.0f, 0.0f);
+        
+        init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 0.1f, 3.0f);        
+    }
     
     f64 start_time = glfwGetTime();
-    
-    float delta_time = 0.0f;
-    float last_frame = 0.0f;
-    
-    double x_pos = 0.0f;
-    double last_x_pos = (float)WIDTH/2.0f;
-    double y_pos = 0.0f;
-    double last_y_pos = (float)HEIGHT/2.0f;
-    float sensitivity = 0.1f;
-    
+        
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
 
         float current_frame = glfwGetTime();
-        delta_time = current_frame - last_frame;
-        last_frame = current_frame;
+        state.delta_time = current_frame - state.last_frame;
+        state.last_frame = current_frame;
         
 		process_input(window);
-        glfwGetCursorPos(window, &x_pos, &y_pos);
-        float x_offset = x_pos - last_x_pos;
-        float y_offset = last_y_pos - y_pos;
-
-        x_offset *= sensitivity;
-        y_offset *= sensitivity;
+        glfwGetCursorPos(window, &state.mouse_x, &state.mouse_y);
+        
+        float x_offset = (state.mouse_x - state.mouse_last_x) * cam.sensitivity;
+        float y_offset = (state.mouse_last_y - state.mouse_y) * cam.sensitivity;
         
         /* Render here */
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -317,64 +333,65 @@ int main(void)
             translate_m4(view, &trans_vec);
 #endif
 
-            float cam_speed = 3.0f * delta_time;
+            float cam_speed = cam.speed * state.delta_time;            
 
-            yaw -= x_offset;
-            pitch += y_offset;
-            if (pitch > 89.0f) pitch = 89.0f;
-            if (pitch < -89.0f) pitch = -89.0f;
+            cam.yaw -= x_offset;
+            cam.pitch += y_offset;
+            if (cam.pitch > 89.0f) cam.pitch = 89.0f;
+            if (cam.pitch < -89.0f) cam.pitch = -89.0f;
+            cam.fov = state.fov;
             
             vec3 dir;
-            dir.x = cos(RADIANS(yaw)) * cos(RADIANS(pitch));
-            dir.y = sin(RADIANS(pitch));
-            dir.z = sin(RADIANS(yaw)) * cos(RADIANS(pitch));
+            dir.x = cos(RADIANS(cam.yaw)) * cos(RADIANS(cam.pitch));
+            dir.y = sin(RADIANS(cam.pitch));
+            dir.z = sin(RADIANS(cam.yaw)) * cos(RADIANS(cam.pitch));
             normalize_v3(&dir);
-            copy_v3(&cam_dir, &dir);           
+            copy_v3(&cam.direction, &dir);           
             
             if(PRESSED(GLFW_KEY_W))
             {
                 vec3 temp;
-                copy_v3(&temp, &cam_dir);
+                copy_v3(&temp, &cam.direction);
                 scale_v3(&temp, cam_speed);
-                add_v3(&cam_pos, &cam_pos, &temp);
+                add_v3(&cam.position, &cam.position, &temp);
             }
             if(PRESSED(GLFW_KEY_S))
             {
                 vec3 temp;                
-                copy_v3(&temp, &cam_dir);
+                copy_v3(&temp, &cam.direction);
                 scale_v3(&temp, cam_speed);
                 
-                sub_v3(&cam_pos, &cam_pos, &temp);
+                sub_v3(&cam.position, &cam.position, &temp);
             }
             if(PRESSED(GLFW_KEY_A))
             {
                 vec3 temp;
                 
-                cross_v3(&temp, &cam_dir, &cam_up);
+                cross_v3(&temp, &cam.direction, &cam.up);
                 normalize_v3(&temp);
                 scale_v3(&temp, cam_speed);               
                 
-                add_v3(&cam_pos, &cam_pos, &temp);
+                add_v3(&cam.position, &cam.position, &temp);
             }
             if(PRESSED(GLFW_KEY_D))
             {
                 vec3 temp;
                 
-                cross_v3(&temp, &cam_dir, &cam_up);
+                cross_v3(&temp, &cam.direction, &cam.up);
                 normalize_v3(&temp);
                 scale_v3(&temp, cam_speed);                
                 
-                sub_v3(&cam_pos, &cam_pos, &temp);
+                sub_v3(&cam.position, &cam.position, &temp);
             }            
             
             vec3 cam_look_at;
-            add_v3(&cam_look_at, &cam_pos, &cam_dir);
+            add_v3(&cam_look_at, &cam.position, &cam.direction);
             
-            look_at(view, &cam_pos, &cam_look_at, &cam_up);
+            look_at(view, &cam.position, &cam_look_at, &cam.up);
 
             /* Projection */
             mat4 projection;
-            perspective(projection, RADIANS(FOV), (float)WIDTH/(float)HEIGHT, 0.1f, 100.0f);
+            perspective(projection, RADIANS(cam.fov), (float)WIDTH/(float)HEIGHT, 0.1f, 100.0f);
             
             glUniformMatrix4fv(model_loc, 1, GL_FALSE, model);
             glUniformMatrix4fv(view_loc, 1, GL_FALSE, view);
@@ -408,8 +425,8 @@ int main(void)
             start_time = glfwGetTime();
         }
 
-        last_x_pos = x_pos;
-        last_y_pos = y_pos;
+        state.mouse_last_x = state.mouse_x;
+        state.mouse_last_y = state.mouse_y;
     }
 	
     glfwTerminate();

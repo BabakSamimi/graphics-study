@@ -105,6 +105,7 @@ void rotate_m4(mat4 out, float theta, vec3* axis);
 #endif
 
 #ifdef GFX_MATH_IMPL
+#undef GFX_MATH_IMPL
 
 #include <math.h>
 #define SQRT_F(N) (float)sqrt(N)

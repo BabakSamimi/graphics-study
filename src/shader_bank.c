@@ -4,30 +4,21 @@
 
 */
 
-#define SHADER_BUFFER_SIZE (4*1024)
-#define SHADER_LOG_SIZE (1*1024)
+#include "shader_bank.h"
 
-const char* version_define = "#version 460 core\n";
-const char* vertex_define = "#define VERTEX_SHADER\n";
-const char* fragment_define = "#define FRAGMENT_SHADER\n";
+static const char* version_define = "#version 460 core\n";
+static const char* vertex_define = "#define VERTEX_SHADER\n";
+static const char* fragment_define = "#define FRAGMENT_SHADER\n";
 
-static u8* paths[][1] = {
+static unsigned char* paths[][1] = {
     { "src\\default.glsl" },
 };
+static unsigned char* shader_src;
+ShaderBank shaders = {0};
 
-typedef struct {
-    u8* (*paths)[1];
-    time_t* mod;
-    u32* programs;
-    u32 programs_count;
-    
-} shader_bank;
-
-static shader_bank shaders = {0};
-
-s32 FILE_size(FILE* fp)
+static int FILE_size(FILE* fp)
 {
-    s32 result;
+    int result;
     
     fseek(fp, 0, SEEK_END);
     result = ftell(fp);
@@ -36,21 +27,19 @@ s32 FILE_size(FILE* fp)
     return result;
 }
 
-u8* shader_src;
-
-static int init_shader_bank()
+int init_shader_bank()
 {
-    shader_src = (u8*)calloc(SHADER_BUFFER_SIZE, sizeof(u8));
+    shader_src = (unsigned char*)calloc(SHADER_BUFFER_SIZE, sizeof(unsigned char));
     shaders.paths = paths;
 
     // TODO: Replace malloc/calloc with custom allocator
     shaders.mod = (time_t*)calloc(ArrayCount(paths), sizeof(time_t));    
     shaders.programs_count = ArrayCount(paths);
-    shaders.programs = (u32*)calloc(shaders.programs_count, sizeof(u32));
+    shaders.programs = (unsigned int*)calloc(shaders.programs_count, sizeof(unsigned int));
     
     // Populate shader inventory
 
-    for(u8 idx = 0;
+    for(unsigned char idx = 0;
         idx < shaders.programs_count;
         idx++)
     {
@@ -68,8 +57,8 @@ static int init_shader_bank()
         }
 
         struct stat fstat;
-        s32 file_size;
-        s32 bytes_read;
+        int file_size;
+        int bytes_read;
             
         // save last modification
         stat(shader_path, &fstat);
@@ -84,25 +73,25 @@ static int init_shader_bank()
         }
 
         // read shader file
-        bytes_read = fread((void*)shader_src, sizeof(u8), file_size, fp);
+        bytes_read = fread((void*)shader_src, sizeof(unsigned char), file_size, fp);
         shader_src[file_size + 1] = '\0';        
         fclose(fp);
 
         const char* const vertex_src[3] = { version_define, vertex_define, shader_src};
-        const s32 v_length[3] = {strlen(version_define), strlen(vertex_define), file_size};
+        const int v_length[3] = {strlen(version_define), strlen(vertex_define), file_size};
         
         const char* const fragment_src[3] = { version_define, fragment_define, shader_src};
-        const s32 f_length[3] = {strlen(version_define), strlen(fragment_define), file_size};
+        const int f_length[3] = {strlen(version_define), strlen(fragment_define), file_size};
                 
         char shader_log[SHADER_LOG_SIZE];
                 
         // compile vertex shader
-        u32 vertex_id = glCreateShader(GL_VERTEX_SHADER);
+        unsigned int vertex_id = glCreateShader(GL_VERTEX_SHADER);
         
         glShaderSource(vertex_id, 3, vertex_src, v_length);
         glCompileShader(vertex_id);
 
-        s32 vertex_compiled = 0;
+        int vertex_compiled = 0;
         glGetShaderiv(vertex_id, GL_COMPILE_STATUS, &vertex_compiled);        
         if(!vertex_compiled)
         {
@@ -112,12 +101,12 @@ static int init_shader_bank()
         }        
          
         // compile fragment shader
-        u32 fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
+        unsigned int fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
         
         glShaderSource(fragment_id, 3, fragment_src, f_length);
         glCompileShader(fragment_id);
         
-        s32 fragment_compiled = 0;
+        int fragment_compiled = 0;
         glGetShaderiv(fragment_id, GL_COMPILE_STATUS, &fragment_compiled);
         if(!fragment_compiled)
         {
@@ -135,12 +124,12 @@ static int init_shader_bank()
             continue;
         }
                 
-        u32 shader_program = glCreateProgram();
+        unsigned int shader_program = glCreateProgram();
         glAttachShader(shader_program, vertex_id);
         glAttachShader(shader_program, fragment_id);
         glLinkProgram(shader_program);
                 
-        s32 program_linked;
+        int program_linked;
         glGetProgramiv(shader_program, GL_LINK_STATUS, &program_linked);
         if(!program_linked)
         {
@@ -164,12 +153,12 @@ static int init_shader_bank()
     return 0;    
 }
 
-static int reload_shader_bank()
+int reload_shader_bank()
 {
     
     // Populate shader inventory
 
-    for(u8 idx = 0;
+    for(unsigned char idx = 0;
         idx < shaders.programs_count;
         idx++)
     {
@@ -185,9 +174,9 @@ static int reload_shader_bank()
         }
 
         struct stat fstat;
-        s32 file_size;
-        s32 bytes_read;
-        u32 shader_changed = 0;
+        int file_size;
+        int bytes_read;
+        unsigned int shader_changed = 0;
             
         // save last modification
         stat(shader_path, &fstat);
@@ -215,24 +204,24 @@ static int reload_shader_bank()
         }
 
         // read shader file
-        bytes_read = fread((void*)shader_src, sizeof(u8), file_size, fp);
+        bytes_read = fread((void*)shader_src, sizeof(unsigned char), file_size, fp);
         shader_src[file_size + 1] = '\0'; //fread does not append null-terminator
         fclose(fp);
 
         const char* const vertex_src[3] = { version_define, vertex_define, shader_src};
-        const s32 v_length[3] = { strlen(version_define), strlen(vertex_define), file_size };
+        const int v_length[3] = { strlen(version_define), strlen(vertex_define), file_size };
         
         const char* const fragment_src[3] = { version_define, fragment_define, shader_src};
-        const s32 f_length[3] = { strlen(version_define), strlen(fragment_define), file_size };
+        const int f_length[3] = { strlen(version_define), strlen(fragment_define), file_size };
         char shader_log[1024];
                 
         // compile vertex shader
-        u32 vertex_id = glCreateShader(GL_VERTEX_SHADER);
+        unsigned int vertex_id = glCreateShader(GL_VERTEX_SHADER);
         
         glShaderSource(vertex_id, 3, vertex_src, v_length);
         glCompileShader(vertex_id);
 
-        s32 vertex_compiled = 0;
+        int vertex_compiled = 0;
         glGetShaderiv(vertex_id, GL_COMPILE_STATUS, &vertex_compiled);        
         if(!vertex_compiled)
         {
@@ -243,12 +232,12 @@ static int reload_shader_bank()
         }        
          
         // compile fragment shader
-        u32 fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
+        unsigned int fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
         
         glShaderSource(fragment_id, 3, fragment_src, f_length);
         glCompileShader(fragment_id);
         
-        s32 fragment_compiled = 0;
+        int fragment_compiled = 0;
         glGetShaderiv(fragment_id, GL_COMPILE_STATUS, &fragment_compiled);
         if(!fragment_compiled)
         {
@@ -267,12 +256,12 @@ static int reload_shader_bank()
             continue;
         }
                 
-        u32 shader_program = glCreateProgram();
+        unsigned int shader_program = glCreateProgram();
         glAttachShader(shader_program, vertex_id);
         glAttachShader(shader_program, fragment_id);
         glLinkProgram(shader_program);
                 
-        s32 program_linked;
+        int program_linked;
         glGetProgramiv(shader_program, GL_LINK_STATUS, &program_linked);
         if(!program_linked)
         {
