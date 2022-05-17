@@ -1,7 +1,6 @@
 __declspec(dllexport) int NvOptimusEnablement = 1;
 __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
-// CRT 
 #include <stdio.h> // printf
 #include <stdbool.h> // true, false
 #include <math.h> // sin
@@ -94,7 +93,11 @@ void scroll_callback(GLFWwindow* window, double x_offset, double y_offset)
 int main(void)
 {
     GLFWwindow* window;
-	
+    
+#if DEBUG
+    printf("Debug mode on\n");
+#endif
+    
     /* Initialize the library */
     if (!glfwInit())
         return -1;
@@ -259,13 +262,9 @@ int main(void)
     stbi_image_free(tex_data);
 
     // Update texture units in our fragment shader
-    glUseProgram(shaders.programs[0]);
-    glUniform1i(glGetUniformLocation(shaders.programs[0], "texture0"), 0);
-    glUniform1i(glGetUniformLocation(shaders.programs[0], "texture1"), 1);
-
-    u32 model_loc = glGetUniformLocation(shaders.programs[0], "model");
-    u32 view_loc = glGetUniformLocation(shaders.programs[0], "view");
-    u32 proj_loc = glGetUniformLocation(shaders.programs[0], "projection");
+    use_program_name("cube");
+    set_int("texture0", 0);
+    set_int("texture1", 1);
 
     state.delta_time = 0.0f;
     state.last_frame = 0.0f;
@@ -287,7 +286,7 @@ int main(void)
         init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 0.1f, 3.0f);        
     }
     
-    f64 start_time = glfwGetTime();
+    f64 start_time = glfwGetTime();    
         
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -308,15 +307,12 @@ int main(void)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         /* bind appropiate shaders */
-        glUseProgram(shaders.programs[0]);
+        use_program_name("cube");
 
         /* update uniform */
         {
             f32 time_value = glfwGetTime();
-            s32 u_time_location = glGetUniformLocation(shaders.programs[0], "u_time");        
-            glUniform1f(u_time_location, time_value);
-            glUniform1i(glGetUniformLocation(shaders.programs[0], "texture0"), 0);
-            glUniform1i(glGetUniformLocation(shaders.programs[0], "texture1"), 1);
+            set_float("u_time", time_value);
 
             mat4 model, view;
             vec3 rotation_axis, trans_vec;
@@ -392,10 +388,10 @@ int main(void)
             /* Projection */
             mat4 projection;
             perspective(projection, RADIANS(cam.fov), (float)WIDTH/(float)HEIGHT, 0.1f, 100.0f);
-            
-            glUniformMatrix4fv(model_loc, 1, GL_FALSE, model);
-            glUniformMatrix4fv(view_loc, 1, GL_FALSE, view);
-            glUniformMatrix4fv(proj_loc, 1, GL_FALSE, projection);            
+
+            set_mat4f("model", model);
+            set_mat4f("view", view);
+            set_mat4f("projection", projection);
             
         }        
         

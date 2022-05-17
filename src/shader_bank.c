@@ -10,10 +10,12 @@ static const char* version_define = "#version 460 core\n";
 static const char* vertex_define = "#define VERTEX_SHADER\n";
 static const char* fragment_define = "#define FRAGMENT_SHADER\n";
 
-static unsigned char* paths[][1] = {
-    { "src\\default.glsl" },
+static unsigned char* paths[][2] = {
+    { "src\\default.glsl", "cube" },                                
 };
+
 static unsigned char* shader_src;
+
 ShaderBank shaders = {0};
 
 static int FILE_size(FILE* fp)
@@ -29,6 +31,7 @@ static int FILE_size(FILE* fp)
 
 int init_shader_bank()
 {
+    shaders.active_program_index = 0;
     shader_src = (unsigned char*)calloc(SHADER_BUFFER_SIZE, sizeof(unsigned char));
     shaders.paths = paths;
 
@@ -44,7 +47,7 @@ int init_shader_bank()
         idx++)
     {
 
-        char* shader_path = shaders.paths[idx][0];     
+        unsigned char* shader_path = shaders.paths[idx][0];     
         FILE* fp = fopen(shader_path, "rb");
 
         printf("Processing shader: %s\n", shader_path);
@@ -58,7 +61,7 @@ int init_shader_bank()
 
         struct stat fstat;
         int file_size;
-        int bytes_read;
+        size_t bytes_read;
             
         // save last modification
         stat(shader_path, &fstat);
@@ -77,10 +80,10 @@ int init_shader_bank()
         shader_src[file_size + 1] = '\0';        
         fclose(fp);
 
-        const char* const vertex_src[3] = { version_define, vertex_define, shader_src};
+        const unsigned char* const vertex_src[3] = { version_define, vertex_define, shader_src};
         const int v_length[3] = {strlen(version_define), strlen(vertex_define), file_size};
         
-        const char* const fragment_src[3] = { version_define, fragment_define, shader_src};
+        const unsigned char* const fragment_src[3] = { version_define, fragment_define, shader_src};
         const int f_length[3] = {strlen(version_define), strlen(fragment_define), file_size};
                 
         char shader_log[SHADER_LOG_SIZE];
@@ -101,7 +104,7 @@ int init_shader_bank()
         }        
          
         // compile fragment shader
-        unsigned int fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
+        unsigned int fragment_id = glCreateShader(GL_FRAGMENT_SHADER);
         
         glShaderSource(fragment_id, 3, fragment_src, f_length);
         glCompileShader(fragment_id);
@@ -128,7 +131,8 @@ int init_shader_bank()
         glAttachShader(shader_program, vertex_id);
         glAttachShader(shader_program, fragment_id);
         glLinkProgram(shader_program);
-                
+        printf("Program ID for %s: %d\n", shader_path, shader_program);
+        
         int program_linked;
         glGetProgramiv(shader_program, GL_LINK_STATUS, &program_linked);
         if(!program_linked)
@@ -163,7 +167,7 @@ int reload_shader_bank()
         idx++)
     {
         
-        char* shader_path = shaders.paths[idx][0];     
+        unsigned char* shader_path = shaders.paths[idx][0];     
         FILE* fp = fopen(shader_path, "rb");
 
         if(!fp)
@@ -175,7 +179,7 @@ int reload_shader_bank()
 
         struct stat fstat;
         int file_size;
-        int bytes_read;
+        size_t bytes_read;
         unsigned int shader_changed = 0;
             
         // save last modification
@@ -208,10 +212,10 @@ int reload_shader_bank()
         shader_src[file_size + 1] = '\0'; //fread does not append null-terminator
         fclose(fp);
 
-        const char* const vertex_src[3] = { version_define, vertex_define, shader_src};
+        const unsigned char* const vertex_src[3] = { version_define, vertex_define, shader_src};
         const int v_length[3] = { strlen(version_define), strlen(vertex_define), file_size };
         
-        const char* const fragment_src[3] = { version_define, fragment_define, shader_src};
+        const unsigned char* const fragment_src[3] = { version_define, fragment_define, shader_src};
         const int f_length[3] = { strlen(version_define), strlen(fragment_define), file_size };
         char shader_log[1024];
                 
@@ -280,8 +284,103 @@ int reload_shader_bank()
         printf("\n");
      
     }
-
-    //free(shader_src);
 	
     return 0;    
+}
+
+void use_program_name(unsigned char* program_name)
+{
+    glUseProgram(3);
+    return;
+    /* Naive */
+    for(unsigned index = 0; index < shaders.programs_count; index++)
+    {
+        if(!strcmp(shaders.paths[index][1], program_name))
+        {
+            shaders.active_program_index = index;
+            glUseProgram(shaders.programs[index]);
+            break;
+        }
+        else
+        {
+            printf("Did not find\n");
+        }
+    }
+
+}
+
+void use_program(unsigned int program)
+{
+    for(unsigned index = 0; index < shaders.programs_count; index++)
+    {
+        if(program == shaders.programs[index])
+        {
+            shaders.active_program_index = index;
+            glUseProgram(program);
+            break;
+        }
+        else
+        {
+            printf("Did not find2\n");
+        }
+    }    
+    
+}
+
+void get_program_name(unsigned int* program, unsigned char* program_name)
+{
+
+    /* Naive */
+    for(unsigned index = 0; index < shaders.programs_count; index++)
+    {
+        if(!strcmp(shaders.paths[index][1], program_name))
+        {
+            *program = shaders.programs[index];
+            break;
+        }
+        else
+        {
+            printf("Did not find3\n");
+        }        
+    }
+}
+
+void get_active_program(unsigned int* program)
+{
+    *program = shaders.programs[shaders.active_program_index];
+}
+
+void set_float(char* name, float val)
+{
+    glUniform1f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val);
+}
+
+void set_int(char* name, int val)
+{
+    glUniform1i(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val);    
+}
+
+void set_vec4f(char* name, float* val)
+{
+    glUniform4f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val[0], val[1], val[2], val[3]);    
+}
+
+void set_vec3f(char* name, float* val)
+{
+    glUniform3f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val[0], val[1], val[2]);        
+}
+
+void set_vec2f(char* name, float* val)
+{
+    glUniform2f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val[0], val[1]);        
+}
+
+void set_mat4f(char* name, float* val)
+{
+    glUniformMatrix4fv(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), 1, GL_FALSE, val);
+}
+
+void set_mat3f(char* name, float* val)
+{
+    glUniformMatrix3fv(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), 1, GL_FALSE, val);
 }
