@@ -290,8 +290,6 @@ int reload_shader_bank()
 
 void use_program_name(unsigned char* program_name)
 {
-    glUseProgram(3);
-    return;
     /* Naive */
     for(unsigned index = 0; index < shaders.programs_count; index++)
     {
