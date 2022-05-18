@@ -290,6 +290,7 @@ int reload_shader_bank()
 
 void use_program_name(unsigned char* program_name)
 {
+
     /* Naive */
     for(unsigned index = 0; index < shaders.programs_count; index++)
     {
@@ -325,7 +326,7 @@ void use_program(unsigned int program)
     
 }
 
-void get_program_name(unsigned int* program, unsigned char* program_name)
+void query_program(unsigned int* program, unsigned char* program_name)
 {
 
     /* Naive */

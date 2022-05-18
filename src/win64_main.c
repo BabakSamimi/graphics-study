@@ -283,7 +283,7 @@ int main(void)
         init_v3(&cam_dir, 0.0f, 0.0f, -1.0f);
         init_v3(&cam_up, 0.0f, 1.0f, 0.0f);
         
-        init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 0.1f, 3.0f);        
+        init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 0.1f, 4.0f);        
     }
     
     f64 start_time = glfwGetTime();    
@@ -309,91 +309,49 @@ int main(void)
         /* bind appropiate shaders */
         use_program_name("cube");
 
-        /* update uniform */
-        {
-            f32 time_value = glfwGetTime();
-            set_float("u_time", time_value);
+        /* Update uniform  */
+        f32 time_value = glfwGetTime();
+        set_float("u_time", time_value);
 
-            mat4 model, view;
-            vec3 rotation_axis, trans_vec;
+        /* Model-view-projection */
+        mat4 model, view;
+        vec3 rotation_axis, trans_vec;
                             
-            /* Rotate in model space */
-            init_diag_m4(model, 1.0f);              
-            init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
-            //rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);
+        /* Rotate in model space */
+        init_diag_m4(model, 1.0f);              
+        init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
+        //rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);
             
-            /* Translate scene forward */     
-            init_diag_m4(view, 1.0f);
-#if 0            
-            init_v3(&trans_vec, 0.0f, 0.0f, -3.0f);                        
-            translate_m4(view, &trans_vec);
+    
+        init_diag_m4(view, 1.0f);
+#if 0
+        /* Translate scene forward */         
+        init_v3(&trans_vec, 0.0f, 0.0f, -3.0f);                        
+        translate_m4(view, &trans_vec);
 #endif
 
-            float cam_speed = cam.speed * state.delta_time;            
+        update_camera_transform(&cam, x_offset, y_offset);        
+        cam.fov = state.fov;
+        
+        float walking_speed = cam.speed * state.delta_time;                        
+        if(PRESSED(GLFW_KEY_W))
+            move_camera(&cam, FORWARD, walking_speed);            
+        if(PRESSED(GLFW_KEY_S))
+            move_camera(&cam, BACKWARD, -walking_speed);            
+        if(PRESSED(GLFW_KEY_A))
+            move_camera(&cam, LEFT, walking_speed);            
+        if(PRESSED(GLFW_KEY_D))
+            move_camera(&cam, RIGHT, -walking_speed);
 
-            cam.yaw -= x_offset;
-            cam.pitch += y_offset;
-            if (cam.pitch > 89.0f) cam.pitch = 89.0f;
-            if (cam.pitch < -89.0f) cam.pitch = -89.0f;
-            cam.fov = state.fov;
-            
-            vec3 dir;
-            dir.x = cos(RADIANS(cam.yaw)) * cos(RADIANS(cam.pitch));
-            dir.y = sin(RADIANS(cam.pitch));
-            dir.z = sin(RADIANS(cam.yaw)) * cos(RADIANS(cam.pitch));
-            normalize_v3(&dir);
-            copy_v3(&cam.direction, &dir);           
-            
-            if(PRESSED(GLFW_KEY_W))
-            {
-                vec3 temp;
-                copy_v3(&temp, &cam.direction);
-                scale_v3(&temp, cam_speed);
-                add_v3(&cam.position, &cam.position, &temp);
-            }
-            if(PRESSED(GLFW_KEY_S))
-            {
-                vec3 temp;                
-                copy_v3(&temp, &cam.direction);
-                scale_v3(&temp, cam_speed);
-                
-                sub_v3(&cam.position, &cam.position, &temp);
-            }
-            if(PRESSED(GLFW_KEY_A))
-            {
-                vec3 temp;
-                
-                cross_v3(&temp, &cam.direction, &cam.up);
-                normalize_v3(&temp);
-                scale_v3(&temp, cam_speed);               
-                
-                add_v3(&cam.position, &cam.position, &temp);
-            }
-            if(PRESSED(GLFW_KEY_D))
-            {
-                vec3 temp;
-                
-                cross_v3(&temp, &cam.direction, &cam.up);
-                normalize_v3(&temp);
-                scale_v3(&temp, cam_speed);                
-                
-                sub_v3(&cam.position, &cam.position, &temp);
-            }            
-            
-            vec3 cam_look_at;
-            add_v3(&cam_look_at, &cam.position, &cam.direction);
-            
-            look_at(view, &cam.position, &cam_look_at, &cam.up);
+        get_camera_view_matrix(view, &cam);
+        
+        /* Projection */
+        mat4 projection;
+        perspective(projection, RADIANS(cam.fov), (float)WIDTH/(float)HEIGHT, 0.1f, 100.0f);
 
-            /* Projection */
-            mat4 projection;
-            perspective(projection, RADIANS(cam.fov), (float)WIDTH/(float)HEIGHT, 0.1f, 100.0f);
-
-            set_mat4f("model", model);
-            set_mat4f("view", view);
-            set_mat4f("projection", projection);
-            
-        }        
+        set_mat4f("model", model);
+        set_mat4f("view", view);
+        set_mat4f("projection", projection);                 
         
         /* bind textures */
         glActiveTexture(GL_TEXTURE0);

@@ -32,7 +32,7 @@ int reload_shader_bank();
 void use_program_name(unsigned char* program_name);
 void use_program(unsigned int program);
 
-void get_program_name(unsigned int* program, unsigned char* program_name);
+void query_program(unsigned int* program, unsigned char* program_name);
 void get_active_program(unsigned int* program);
     
 void set_float(char* name, float value);

@@ -49,6 +49,7 @@ void copy_v3(vec3* out, vec3* target);
 int compare_v3(vec3* target, vec3* source);
 void add_v3(vec3* out, vec3* a, vec3* b);
 void sub_v3(vec3* out, vec3* a, vec3* b);
+void negate_v3(vec3* a);
 void scale_v3(vec3* out, float scalar);
 float dot_v3(vec3* a, vec3* b);
 void cross_v3(vec3* out, vec3* a, vec3* b);
@@ -203,6 +204,13 @@ void sub_v3(vec3* out, vec3* a, vec3* b)
     out->x = a->x - b->x;
     out->y = a->y - b->y;
     out->z = a->z - b->z;
+}
+
+void negate_v3(vec3* a)
+{
+    a->x = -a->x;
+    a->y = -a->y;
+    a->z = -a->z;    
 }
 
 void scale_v3(vec3* a, float scalar)
