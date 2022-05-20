@@ -31,7 +31,6 @@ typedef float mat4[16];
   
 */
 
-
 #define MAT(M,ROW,COL) ((M).elements[(ROW)][(COL)])
 #define MAT_P(M,ROW,COL) ((M)->elements[(ROW)][(COL)])
 
@@ -95,12 +94,13 @@ void copy_m4(mat4 out, mat4 target);
 void mult_m4(mat4 out, mat4 a, mat4 b);
 void scale_m4(mat4 out, float x, float y, float z); /* Last row untouched */
 void scale_whole_m4(mat4 out, float scalar);
-
 void m4_mult_v4(vec4* out, mat4 mat, vec4* v);
 
 /* Transforms */
 void translate_m4(mat4 out, vec3* vec);
+
 /* Supply a rotation matrix an angle theta and then multiply it with the input matrix */
+
 void rotate_m4(mat4 out, float theta, vec3* axis);
 
 #endif
@@ -111,12 +111,12 @@ void rotate_m4(mat4 out, float theta, vec3* axis);
 #include <math.h>
 #define SQRT_F(N) (float)sqrt(N)
 
+
 /*
   
   VECTOR 2
   
 */
-
 void init_v2(vec2* out, float x, float y)
 {
     out->x = x;

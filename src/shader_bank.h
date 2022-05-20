@@ -6,8 +6,6 @@
 
 #include "glad/glad.h"
 
-#define SHADER_BUFFER_SIZE (4*1024)
-#define SHADER_LOG_SIZE (1*1024)
 #define ArrayCount(A) (sizeof((A)) / sizeof((A)[0]))
 
 typedef struct {
