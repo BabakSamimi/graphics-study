@@ -35,7 +35,7 @@ void move_camera(Camera* cam, WalkingDirection dir, float speed)
 void update_camera_transform(Camera* cam, float x_offset, float y_offset)
 {
     if (x_offset == 0.0f && y_offset == 0.0f) return;
-    
+
     cam->yaw -= x_offset;
     cam->pitch += y_offset;
     if (cam->pitch > 89.0f) cam->pitch = 89.0f;
@@ -50,8 +50,8 @@ void update_camera_transform(Camera* cam, float x_offset, float y_offset)
     normalize_v3(&cam->right);
 
     cross_v3(&cam->up, &cam->right, &cam->direction);
-    normalize_v3(&cam->up);    
-    
+    normalize_v3(&cam->up);
+
 }
 void get_camera_view_matrix(mat4 view, Camera* cam)
 {

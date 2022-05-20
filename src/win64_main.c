@@ -8,22 +8,6 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-#include <stdint.h>
-typedef int8_t s8;
-typedef uint8_t u8;
-
-typedef int16_t s16;
-typedef uint16_t u16;
-
-typedef int32_t s32;
-typedef uint32_t u32;
-
-typedef int64_t s64;
-typedef uint64_t u64;
-
-typedef float f32;
-typedef double f64;
-
 #define ArrayCount(A) (sizeof((A)) / sizeof((A)[0]))
 
 int WIDTH = 1280;
@@ -45,6 +29,7 @@ float FOV = 90.0f;
 
 typedef struct
 {
+    float target_frame_ms;
     float delta_time;
     float last_frame;
     float fov;
@@ -199,7 +184,7 @@ int main(void)
     init_shader_bank();
     
     // Create a VAO to store the layout of our attributes
-    u32 VBO, VAO, EBO, texture0, texture1;
+    unsigned int VBO, VAO, EBO, texture0, texture1;
 
     // Setup VAO
     glGenVertexArrays(1, &VAO);    
@@ -211,9 +196,9 @@ int main(void)
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     // Setup vertex attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(f32), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(f32), (void*)(3*sizeof(f32)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3*sizeof(float)));
     glEnableVertexAttribArray(1);
 
     // Setup EBO
@@ -233,8 +218,8 @@ int main(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    s32 tex_width, tex_height, nr_channels;
-    u8* tex_data = stbi_load("bin\\assets\\container.jpg", &tex_width, &tex_height, &nr_channels, 0);
+    int tex_width, tex_height, nr_channels;
+    unsigned char* tex_data = stbi_load("bin\\assets\\container.jpg", &tex_width, &tex_height, &nr_channels, 0);
     if(tex_data)
     {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex_data);
@@ -266,6 +251,13 @@ int main(void)
     set_int("texture0", 0);
     set_int("texture1", 1);
 
+    /* bind textures */
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texture1);        
+            
+    state.target_frame_ms = 1000.0f * (1.0f / 60.0f);
     state.delta_time = 0.0f;
     state.last_frame = 0.0f;
     state.fov = 90.0f;
@@ -286,21 +278,20 @@ int main(void)
         init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 0.1f, 4.0f);        
     }
     
-    f64 start_time = glfwGetTime();    
+    double reload_time = glfwGetTime();
+    int frames_elapsed = 0;
         
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
 
         float current_frame = glfwGetTime();
-        state.delta_time = current_frame - state.last_frame;
-        state.last_frame = current_frame;
         
 		process_input(window);
         glfwGetCursorPos(window, &state.mouse_x, &state.mouse_y);
         
         float x_offset = (state.mouse_x - state.mouse_last_x) * cam.sensitivity;
-        float y_offset = (state.mouse_last_y - state.mouse_y) * cam.sensitivity;
+        float y_offset = (state.mouse_last_y - state.mouse_y) * cam.sensitivity;        
         
         /* Render here */
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -310,7 +301,7 @@ int main(void)
         use_program_name("cube");
 
         /* Update uniform  */
-        f32 time_value = glfwGetTime();
+        float time_value = glfwGetTime();
         set_float("u_time", time_value);
 
         /* Model-view-projection */
@@ -339,9 +330,9 @@ int main(void)
         if(PRESSED(GLFW_KEY_S))
             move_camera(&cam, BACKWARD, -walking_speed);            
         if(PRESSED(GLFW_KEY_A))
-            move_camera(&cam, LEFT, walking_speed);            
+            move_camera(&cam, LEFT, walking_speed*0.8f);            
         if(PRESSED(GLFW_KEY_D))
-            move_camera(&cam, RIGHT, -walking_speed);
+            move_camera(&cam, RIGHT, -walking_speed*0.8f);
 
         get_camera_view_matrix(view, &cam);
         
@@ -353,12 +344,6 @@ int main(void)
         set_mat4f("view", view);
         set_mat4f("projection", projection);                 
         
-        /* bind textures */
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture0);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texture1);        
-        
         /* draw quad */
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -369,18 +354,29 @@ int main(void)
 		
         /* Poll for and process events */
         glfwPollEvents();
-
-        f64 end_time = glfwGetTime();
-        f64 elapsed = end_time - start_time;
         
-        if(elapsed > 1.0f)
+        double end_time = glfwGetTime();
+        double elapsed = end_time - reload_time;
+        
+        if(elapsed >= 1.0f)
         {
             reload_shader_bank();
-            start_time = glfwGetTime();
+            reload_time = end_time;
         }
 
         state.mouse_last_x = state.mouse_x;
         state.mouse_last_y = state.mouse_y;
+        
+        state.delta_time = current_frame - state.last_frame;
+        state.last_frame = current_frame;
+
+        double work_time = state.delta_time*1000.0f;
+        // printf("Frame work time: %0.4f ms\n", work_time);
+        if(work_time > state.target_frame_ms)
+        {
+            /* Insert sleep function here when not using vsync */
+        }
+
     }
 	
     glfwTerminate();

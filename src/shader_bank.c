@@ -90,7 +90,6 @@ int reload_shader_bank()
 
         printf("Loading shader %s\n", shader_path);
 
-        // read the shaders and compile
         file_size = FILE_size(fp);
         if (file_size == -1L)
         {
@@ -101,18 +100,20 @@ int reload_shader_bank()
 
         // read shader file
         bytes_read = fread((void*)shader_src, sizeof(unsigned char), file_size, fp);
-        shader_src[file_size + 1] = '\0'; //fread does not append null-terminator
         fclose(fp);
+        
+        shader_src[file_size] = '\0'; //fread does not append null-terminator
 
-        const unsigned char* const vertex_src[3] = { version_define, vertex_define, shader_src};
+        /* vertex_src and fragment_src copies shader_src, which is unneccesary copying */
+        const unsigned char* const vertex_src[3] = { version_define, vertex_define, shader_src };
         const int v_length[3] = { strlen(version_define), strlen(vertex_define), file_size };
         
-        const unsigned char* const fragment_src[3] = { version_define, fragment_define, shader_src};
+        const unsigned char* const fragment_src[3] = { version_define, fragment_define, shader_src };
         const int f_length[3] = { strlen(version_define), strlen(fragment_define), file_size };
         
         char shader_log[SHADER_LOG_SIZE];
                 
-        // compile vertex shader
+        /* Compile vertex shader */
         unsigned int vertex_id = glCreateShader(GL_VERTEX_SHADER);
         
         glShaderSource(vertex_id, 3, vertex_src, v_length);
@@ -123,12 +124,11 @@ int reload_shader_bank()
         if(!vertex_compiled)
         {
             glGetShaderInfoLog(vertex_id, SHADER_LOG_SIZE, 0, shader_log);          
-            printf("Vertex shader %s failed! Reason:", shader_path);
-            printf("%s\n", shader_log);
-            printf("This is the code it tried to compile:\n%s%s%s\n", vertex_src[0], vertex_src[1], vertex_src[2]);
+            printf("Vertex shader %s failed! Reason: %s\n", shader_path, shader_log);
+            printf("This is the code it tried to compile:\n%s\n", vertex_src[2]);
         }        
          
-        // compile fragment shader
+        /* Compile fragment shader */
         unsigned int fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
         
         glShaderSource(fragment_id, 3, fragment_src, f_length);
@@ -139,15 +139,13 @@ int reload_shader_bank()
         if(!fragment_compiled)
         {
             glGetShaderInfoLog(fragment_id, SHADER_LOG_SIZE, 0, shader_log);            
-            printf("Fragment shader %s failed! Reason: ", shader_path);
-            printf("%s\n", shader_log);
-            printf("This is the code it tried to compile:\n %s %s %s\n", fragment_src[0], fragment_src[1], fragment_src[2]);
+            printf("Fragment shader %s failed! Reason: %s\n", shader_path, shader_log);
+            printf("This is the code it tried to compile:\n%s\n", fragment_src[2]);
         }
 
-        // If one of them failed, don't even try to link them together
+        /* If one of them failed, don't even try to link them together */
         if(!vertex_compiled || !fragment_compiled)
         {            
-
             glDeleteShader(vertex_id);
             glDeleteShader(fragment_id);                    
             continue;
