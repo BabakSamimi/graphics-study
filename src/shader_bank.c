@@ -11,8 +11,15 @@ static const char* vertex_define = "#define VERTEX_SHADER\n";
 static const char* fragment_define = "#define FRAGMENT_SHADER\n";
 
 static unsigned char* paths[][2] = {
-    { "src\\default.glsl", "cube" },                                
+    { "src\\default.glsl", "cube" },
+    { "src\\default.glsl", "cube1" },    
 };
+
+/* List of faulty programs */
+// NOTE: Only allocated for 64 programs 
+#define MAX_FAULTY_PROGRAMS 64
+static unsigned char* faulty_program_names[MAX_FAULTY_PROGRAMS] = {0};
+static unsigned int faulty_program_handles[MAX_FAULTY_PROGRAMS] = {0};
 
 #define SHADER_BUFFER_SIZE (4*1024)
 #define SHADER_LOG_SIZE (1*1024)
@@ -158,21 +165,20 @@ int reload_shader_bank()
                 
         int program_linked;
         glGetProgramiv(shader_program, GL_LINK_STATUS, &program_linked);
-        if(!program_linked)
+        
+        if(program_linked)
         {
-            glGetProgramInfoLog(shader_program, SHADER_LOG_SIZE, 0, shader_log);            
-            printf("Linking failed for %s! Reason:", shader_path);
-            printf("%s\n", shader_log);
+            shaders.programs[idx] = shader_program;
+            printf("Compiled and linked shader program: %s\n\n", shaders.paths[idx][1]);
         }
         else
         {
-            shaders.programs[idx] = shader_program;
-            printf("Compiled and linked shader: %s\n", shader_path);
+            glGetProgramInfoLog(shader_program, SHADER_LOG_SIZE, 0, shader_log);            
+            printf("Linking failed for %s! Reason: %s\n\n", shader_path, shader_log);
         }
 
         glDeleteShader(vertex_id);
         glDeleteShader(fragment_id);
-        printf("\n");
      
     }
 	
@@ -182,57 +188,126 @@ int reload_shader_bank()
 void use_program_name(unsigned char* program_name)
 {
 
+    int found = 0;
+    
     /* Naive */
     for(unsigned index = 0; index < shaders.programs_count; index++)
     {
         if(!strcmp(shaders.paths[index][1], program_name))
         {
+            found = 1;
             shaders.active_program_index = index;
             glUseProgram(shaders.programs[index]);
             break;
         }
-        else
-        {
-            printf("Did not find\n");
-        }
     }
 
+    if(!found)
+    {
+        found = 0; // reuse
+        unsigned int f_index = 0;
+        char* faulty_program = faulty_program_names[f_index];
+            
+        while(faulty_program)
+        {
+            if(faulty_program == program_name)
+            {
+                found = 1;
+                break;
+            }
+                
+            faulty_program = faulty_program_names[++f_index];
+        }
+
+        if(!found)
+        {
+            faulty_program_names[f_index] = program_name;
+            printf("Could not use shader program '%s'. Reason: Does not exist.\n", program_name);                             
+        }        
+    }
 }
 
 void use_program(unsigned int program)
 {
+    int found = 0;
     for(unsigned index = 0; index < shaders.programs_count; index++)
     {
         if(program == shaders.programs[index])
         {
+            found = 1;
             shaders.active_program_index = index;
             glUseProgram(program);
             break;
         }
-        else
+
+    }
+
+    if(!found)
+    {
+        found = 0; // reuse
+        unsigned int f_index = 0;
+        int faulty_program = faulty_program_handles[f_index];
+            
+        while(faulty_program)
         {
-            printf("Did not find2\n");
+            if(faulty_program == program)
+            {
+                found = 1;
+                break;
+            }
+                
+            faulty_program = faulty_program_handles[++f_index];
         }
-    }    
+
+        if(!found)
+        {
+            faulty_program_handles[f_index] = program;
+            printf("Could not use shader program with id '%d'. Reason: Does not exist.\n", program);
+        }
+
+    }
     
 }
 
 void query_program(unsigned int* program, unsigned char* program_name)
 {
-
+    int found = 0;
     /* Naive */
     for(unsigned index = 0; index < shaders.programs_count; index++)
     {
         if(!strcmp(shaders.paths[index][1], program_name))
         {
+            found = 1;
             *program = shaders.programs[index];
             break;
         }
-        else
+                
+    }
+    
+    if(!found)
+    {
+        found = 0; // reuse
+        unsigned int f_index = 0;
+        char* faulty_program = faulty_program_names[f_index];
+            
+        while(faulty_program)
         {
-            printf("Did not find3\n");
+            if(faulty_program == program_name)
+            {
+                found = 1;
+                break;
+            }
+                
+            faulty_program = faulty_program_names[++f_index];
+        }
+
+        if(!found)
+        {
+            faulty_program_names[f_index] = program_name;
+            printf("Could not query shader program '%s'. Reason: Does not exist.\n", program_name);                             
         }        
     }
+    
 }
 
 void get_active_program(unsigned int* program)

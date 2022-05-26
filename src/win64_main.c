@@ -10,19 +10,18 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 #define ArrayCount(A) (sizeof((A)) / sizeof((A)[0]))
 
-int WIDTH = 1280;
-int HEIGHT = 720;
+int window_width = 1280;
+int window_height = 720;
 float FOV = 90.0f;
 
 // app code
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#include "shader_bank.h"
-
 #define GFX_MATH_IMPL
 #include "gfx_math.h"
 
+#include "shader_bank.h"
 #include "camera.h"
 
 #define PRESSED(KEY) (glfwGetKey(window, KEY) == GLFW_PRESS)
@@ -92,7 +91,7 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	
     /* Create a window and its OpenGL context */
-    window = glfwCreateWindow(WIDTH, HEIGHT, "learnopengl", NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, "learnopengl", NULL, NULL);
 	
 	if (!window)
     {
@@ -106,7 +105,7 @@ int main(void)
     
 	gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
 	
-	glViewport(0,0, WIDTH, HEIGHT);
+	glViewport(0,0, window_width, window_height);
     glEnable(GL_DEPTH_TEST);
     glfwSwapInterval(1);
 	
@@ -264,8 +263,8 @@ int main(void)
 
     state.mouse_x = 0.0f;
     state.mouse_y = 0.0f;
-    state.mouse_last_x = (float)WIDTH / 2.0f;
-    state.mouse_last_y = (float)HEIGHT / 2.0f;
+    state.mouse_last_x = (float)window_width / 2.0f;
+    state.mouse_last_y = (float)window_height / 2.0f;
 
     Camera cam;
     {    
@@ -311,8 +310,7 @@ int main(void)
         /* Rotate in model space */
         init_diag_m4(model, 1.0f);              
         init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
-        //rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);
-            
+        //rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);            
     
         init_diag_m4(view, 1.0f);
 #if 0
@@ -338,7 +336,7 @@ int main(void)
         
         /* Projection */
         mat4 projection;
-        perspective(projection, RADIANS(cam.fov), (float)WIDTH/(float)HEIGHT, 0.1f, 100.0f);
+        perspective(projection, RADIANS(cam.fov), (float)window_width/(float)window_height, 0.1f, 100.0f);
 
         set_mat4f("model", model);
         set_mat4f("view", view);

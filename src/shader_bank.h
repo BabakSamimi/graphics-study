@@ -1,3 +1,5 @@
+#ifndef SHADER_BANK_H
+#define SHADER_BANK_H
 #include <time.h> // timespec
 #include <stdio.h> // FILE
 #include <sys/stat.h> // stat
@@ -42,3 +44,5 @@ void set_vec2f(char* name, float* value);
 
 void set_mat4f(char* name, float* value);
 void set_mat3f(char* name, float* value);
+
+#endif

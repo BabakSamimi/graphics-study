@@ -1,4 +1,7 @@
+#ifndef CAMERA_H
+#define CAMERA_H
 #include "gfx_math.h"
+
 
 typedef enum
 {
@@ -24,3 +27,4 @@ void update_camera_transform(Camera* cam, float x_offset, float y_offset);
 void move_camera(Camera* cam, WalkingDirection dir_sign, float speed);
 void get_camera_view_matrix(mat4 view, Camera* cam);
 
+#endif
