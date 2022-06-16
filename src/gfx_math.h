@@ -508,7 +508,7 @@ void scale_m4(mat4 out, float x, float y, float z)
 {
     out[0] *= x;    
     out[5] *= y;   
-    out[0] *= z;        
+    out[10] *= z;        
 }
 
 void scale_whole_m4(mat4 source, float scalar)

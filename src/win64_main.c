@@ -81,7 +81,7 @@ int main(void)
     printf("Debug mode on\n");
 #endif
     
-    /* Initialize the library */
+    // Initialize the library
     if (!glfwInit())
         return -1;
 	
@@ -89,7 +89,7 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	
-    /* Create a window and its OpenGL context */
+    // Create a window and its OpenGL context
     window = glfwCreateWindow(window_width, window_height, "learnopengl", NULL, NULL);
 	
 	if (!window)
@@ -99,7 +99,7 @@ int main(void)
         return -1;
     }
 
-    /* Make the window's context current */
+    // Make the window's context current
     glfwMakeContextCurrent(window);    
     
 	gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
@@ -108,7 +108,7 @@ int main(void)
     glEnable(GL_DEPTH_TEST);
     glfwSwapInterval(1);
 	
-	/* Register GLFW callbacks */
+	// Register GLFW callbacks
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);    
@@ -118,7 +118,7 @@ int main(void)
     int minor_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR);
 	printf("OpenGL version %d.%d\n", major_ver, minor_ver);
 
-    /* Vertex Buffer */
+    // Vertex Buffer
 #if 0     
     float vertices[] = {
         // positions        // colors        // texture coordinates
@@ -173,7 +173,7 @@ int main(void)
         -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };    
     
-    /* Index Buffer */    
+    // Index Buffer
     unsigned int indices[] = {  // note that we start from 0!
         0, 1, 3,   // first triangle
         1, 2, 3    // second triangle
@@ -183,7 +183,8 @@ int main(void)
     
     // Create a VAO to store the layout of our attributes
     unsigned int VBO, VAO, EBO, texture0, texture1;
-
+    unsigned int light_VAO;
+    
     // Setup VAO
     glGenVertexArrays(1, &VAO);    
     glBindVertexArray(VAO);
@@ -196,9 +197,17 @@ int main(void)
     // Setup vertex attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3*sizeof(float)));
-    glEnableVertexAttribArray(1);
 
+    // Setup light cube
+    glGenVertexArrays(1, &light_VAO);    
+    glBindVertexArray(light_VAO);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, VBO); // re-use the same VBO
+    
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);    
+
+    /*
     // Setup EBO
     glGenBuffers(1, &EBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
@@ -249,12 +258,14 @@ int main(void)
     set_int("texture0", 0);
     set_int("texture1", 1);
 
-    /* bind textures */
+    // bind textures
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture0);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, texture1);        
-            
+    glBindTexture(GL_TEXTURE_2D, texture1);
+    
+    */
+    
     state.target_frame_ms = 1000.0f * (1.0f / 60.0f);
     state.delta_time = 0.0f;
     state.last_frame = 0.0f;
@@ -275,6 +286,9 @@ int main(void)
         
         init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 0.1f, 4.0f);        
     }
+
+    vec3 light_pos;
+    init_v3(&light_pos, 1.2f, 1.0f, 2.0f);
     
     double reload_time = glfwGetTime();
     int frames_elapsed = 0;
@@ -289,34 +303,7 @@ int main(void)
         glfwGetCursorPos(window, &state.mouse_x, &state.mouse_y);
         
         float x_offset = (state.mouse_x - state.mouse_last_x) * cam.sensitivity;
-        float y_offset = (state.mouse_last_y - state.mouse_y) * cam.sensitivity;        
-        
-        /* Render here */
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        /* bind appropiate shaders */
-        use_program_name("cube");
-
-        /* Update uniform  */
-        float time_value = glfwGetTime();
-        set_float("u_time", time_value);
-
-        /* Model-view-projection */
-        mat4 model, view;
-        vec3 rotation_axis, trans_vec;
-                            
-        /* Rotate in model space */
-        init_diag_m4(model, 1.0f);              
-        init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
-        //rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);            
-    
-        init_diag_m4(view, 1.0f);
-#if 0
-        /* Translate scene forward */         
-        init_v3(&trans_vec, 0.0f, 0.0f, -3.0f);                        
-        translate_m4(view, &trans_vec);
-#endif
+        float y_offset = (state.mouse_last_y - state.mouse_y) * cam.sensitivity;
 
         update_camera_transform(&cam, x_offset, y_offset);        
         cam.fov = state.fov;
@@ -329,23 +316,66 @@ int main(void)
         if(PRESSED(GLFW_KEY_A))
             move_camera(&cam, LEFT, walking_speed*0.8f);            
         if(PRESSED(GLFW_KEY_D))
-            move_camera(&cam, RIGHT, -walking_speed*0.8f);
-
-        get_camera_view_matrix(view, &cam);
+            move_camera(&cam, RIGHT, -walking_speed*0.8f);        
         
-        /* Projection */
-        mat4 projection;
+        /* Render starts here */
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        /* Model-view-projection */
+        mat4 model, view, projection;
+        vec3 rotation_axis, trans_vec;
+
+        // Calculate perspective projection matrix
         perspective(projection, RADIANS(cam.fov), (float)window_width/(float)window_height, 0.1f, 100.0f);
+        
+        init_diag_m4(view, 1.0f);
+#if 0
+        /* Translate scene forward */         
+        init_v3(&trans_vec, 0.0f, 0.0f, -3.0f);                        
+        translate_m4(view, &trans_vec);
+#endif
+
+        get_camera_view_matrix(view, &cam);        
+
+        /* Render cube */
+        use_program_name("cube");
+
+        /* Update uniforms  */
+        float time_value = glfwGetTime();
+        
+        //set_float("u_time", time_value);        
+        set_vec3f("object_color", (float[]){0.4f, 0.2f, 0.6f});
+        set_vec3f("light_color", (float[]){1.0f, 1.0f, 1.0f});        
+                            
+        /* Rotate in model space */
+        init_diag_m4(model, 1.0f);              
+        init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
+        //rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);            
+    
 
         set_mat4f("model", model);
         set_mat4f("view", view);
         set_mat4f("projection", projection);                 
         
-        /* draw quad */
+        /* Draw cube */
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
-		
+
+        // Render light cube
+        use_program_name("light");
+        init_diag_m4(model, 1.0f);
+        translate_m4(model, &light_pos);
+        scale_m4(model, 0.2f, 0.2f, 0.2f);
+        
+        set_mat4f("model", model);
+        set_mat4f("view", view);
+        set_mat4f("projection", projection);
+        
+        glBindVertexArray(light_VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
 		

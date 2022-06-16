@@ -11,8 +11,9 @@ static const char* vertex_define = "#define VERTEX_SHADER\n";
 static const char* fragment_define = "#define FRAGMENT_SHADER\n";
 
 static unsigned char* paths[][2] = {
-    { "src\\default.glsl", "cube" },
-    { "src\\default.glsl", "cube1" },    
+    { "src\\cube.glsl", "cube" },
+    { "src\\light.glsl", "light" },    
+  
 };
 
 /* List of faulty programs */
