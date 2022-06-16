@@ -641,13 +641,13 @@ void perspective(mat4 out, float fov, float aspect, float n, float f)
     out[11] = -1.0f;
     out[12] = 0.0f;
     out[13] = 0.0f;
-    out[14] = 2.0f * f *n / (n-f);
+    out[14] = 2.0f * f * n / (n - f);
     out[15] = 0.0f;
 }
 
 void look_at(mat4 out, vec3* cam_pos, vec3* at, vec3* up)
 {
-    vec3 z_axis, x_axis, y_axis;
+    vec3 x_axis, y_axis, z_axis;
     
     sub_v3(&z_axis, cam_pos, at);    
     normalize_v3(&z_axis);
