@@ -12,7 +12,6 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 int window_width = 1280;
 int window_height = 720;
-float FOV = 90.0f;
 
 // app code
 #define STB_IMAGE_IMPLEMENTATION
@@ -66,10 +65,10 @@ void process_input(GLFWwindow* window)
 void scroll_callback(GLFWwindow* window, double x_offset, double y_offset)
 {
     state.fov -= (float)y_offset;
-    if (FOV < 1.0f)
-        FOV = 1.0f;
-    if (FOV > 120.0f)
-        FOV = 120.0f;
+    if (state.fov < 1.0f)
+        state.fov = 1.0f;
+    if (state.fov > 120.0f)
+        state.fov = 120.0f;
 
     printf("New FOV Value: %.2f\n", state.fov);
 }
