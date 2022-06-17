@@ -20,6 +20,21 @@ void main()
 
 #ifdef FRAGMENT_SHADER
 
+struct Material {
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    float shininess;    
+};
+
+struct Light {
+    vec3 position;
+    
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
 in vec3 normal;
 in vec3 frag_pos;
 
@@ -29,29 +44,32 @@ uniform vec3 object_color;
 uniform vec3 view_pos;
 
 uniform vec3 light_color;
-uniform vec3 light_pos;
+uniform Light light;
+
+uniform Material material;
 
 void main()
 {
 
     // Ambient
-    float ambient_coeff = 0.2;
-    vec3 ambient_color = ambient_coeff * light_color;
-
+    vec3 ambient = light.ambient * material.ambient;
+    
     // Diffuse
     vec3 unit_normal = normalize(normal);
-    vec3 light_dir = normalize(light_pos - frag_pos);
+    vec3 light_dir = normalize(light.position - frag_pos);
 
     float diffuse_coeff = max(dot(unit_normal, light_dir), 0.0);
-    vec3 diffuse_color = diffuse_coeff * light_color;
+    vec3 diffuse = (diffuse_coeff * material.diffuse) * light.diffuse;
 
     // Specular
     vec3 view_dir = normalize(view_pos - frag_pos);
     vec3 reflect_dir = reflect(-light_dir, unit_normal);
+    
     float specular_strength = 0.5;
-    vec3 specular = pow(max(dot(view_dir, reflect_dir), 0.0), 64) * specular_strength * light_color;
+    float specular_coeff = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
+    vec3 specular =  (specular_coeff * material.specular) * light.specular;
 
-    frag_color = vec4((ambient_color + diffuse_color + specular) * object_color, 1.0);
+    frag_color = vec4((ambient + diffuse + specular), 1.0);
 }
 
 #endif

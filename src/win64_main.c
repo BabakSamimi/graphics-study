@@ -350,11 +350,29 @@ int main(void)
         /* Update uniforms  */
         float time_value = glfwGetTime();
         
+        light_pos.x = 2.0f * sin(time_value) * cos(time_value);
+        light_pos.y = 2.0f * sin(time_value) * sin(time_value);
+        light_pos.z = 2.0f * cos(time_value);
+        
+        light_pos.x = -2.0f;
+        light_pos.y = 0.5f;
+        light_pos.z = 1.0f;
+        
         //set_float("u_time", time_value);        
-        set_vec3f("object_color", (float[]){0.4f, 0.2f, 0.6f});
-        set_vec3f("light_color", (float[]){1.0f, 1.0f, 1.0f});
-        set_vec3f("light_pos", (float[]){light_pos.x, light_pos.y, light_pos.z});
-        set_vec3f("view_pos", (float[]){cam.position.x, cam.position.y, cam.position.z});
+        set_vec3f("object_color", 0.4f, 0.2f, 0.6f);
+        set_vec3f("light_color", 1.0f, 1.0f, 1.0f);
+        set_vec3f("light_pos", light_pos.x, light_pos.y, light_pos.z);
+        set_vec3f("view_pos", cam.position.x, cam.position.y, cam.position.z);
+
+        set_vec3f("material.ambient", 0.4f, 0.2f, 0.6f);
+        set_vec3f("material.diffuse", 0.4f, 0.2f, 0.6f);
+        set_vec3f("material.specular", 0.5f, 0.5f, 0.5f);
+        set_float("material.shininess", 32.0f);
+
+        set_vec3f("light.position", light_pos.x, light_pos.y, light_pos.z);       
+        set_vec3f("light.ambient", 0.2f, 0.2f, 0.2f);
+        set_vec3f("light.diffuse", 0.5f, 0.5f, 0.5f);
+        set_vec3f("light.specular", 1.0f, 1.0f, 1.0f);
                             
         init_diag_m4(model, 1.0f);
         
@@ -373,7 +391,6 @@ int main(void)
 
         // Render light cube
         use_program_name("light");
-        light_pos.y = 0.5f * sin(time_value);
         init_diag_m4(model, 1.0f);        
         scale_m4(model, 0.2f, 0.2f, 0.2f);       
         translate_m4(model, &light_pos);

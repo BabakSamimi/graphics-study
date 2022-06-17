@@ -31,9 +31,6 @@ typedef float mat4[16];
   
 */
 
-#define MAT(M,ROW,COL) ((M).elements[(ROW)][(COL)])
-#define MAT_P(M,ROW,COL) ((M)->elements[(ROW)][(COL)])
-
 void init_v2(vec2* out, float x, float y);
 void copy_v2(vec2* out, vec2* target);
 int compare_v2(vec2* target, vec2* source);
@@ -42,6 +39,7 @@ void sub_v2(vec2* out, vec2* a, vec2* b);
 void scale_v2(vec2* out, float scalar);
 float dot_v2(vec2* a, vec2* b);
 float length_v2(vec2* a);
+void normalize_v2(vec2* a);
 
 void init_v3(vec3* out, float x, float y, float z);
 void copy_v3(vec3* out, vec3* target);
@@ -63,6 +61,7 @@ void sub_v4(vec4* out, vec4* a, vec4* b);
 void scale_v4(vec4* out, float scalar);
 float dot_v4(vec4* a, vec4* b);
 float length_v4(vec4* a);
+void normalize_v4(vec4* a);
 
 /*
   3x3 MATRIX FUNCTIONS
@@ -73,9 +72,9 @@ void init_diag_m3(mat3 out, float scalar);
 void copy_m3(mat3 out, mat3 target);
 void mult_m3(mat3 out, mat3 a, mat3 b);
 void scale_m3(mat3 out, float x, float y); /* Last row untouched */
-void scale_whole_m3(mat3 out, float scalar);
+void uniform_scale_m3(mat3 out, float scalar);
 
-/* Scale individual row */
+/* Non-uniform scaling */
 void scale_x_m3(mat3 source, float scalar);
 void scale_y_m3(mat3 source, float scalar);
 void scale_z_m3(mat3 source, float scalar);
@@ -93,7 +92,7 @@ void init_diag_m4(mat4 out, float scalar);
 void copy_m4(mat4 out, mat4 target);
 void mult_m4(mat4 out, mat4 a, mat4 b);
 void scale_m4(mat4 out, float x, float y, float z); /* Last row untouched */
-void scale_whole_m4(mat4 out, float scalar);
+void uniform_scale_m4(mat4 out, float scalar);
 void m4_mult_v4(vec4* out, mat4 mat, vec4* v);
 
 /* Transforms */
@@ -162,6 +161,13 @@ float dot_v2(vec2* a, vec2* b)
 float length_v2(vec2* a)
 {
     return SQRT_F((a->x * a->x) + (a->y * a->y));
+}
+
+void normalize_v2(vec2* a)
+{
+    float length = length_v2(a);
+    a->x /= length;
+    a->y /= length;
 }
 
 /*
@@ -259,7 +265,7 @@ void init_v4(vec4* out, float x, float y, float z, float w)
     out->w = w;
 }
 
-void copy_v4(vec4* a, vec4* out)
+void copy_v4(vec4* out, vec4* a)
 {
     out->x = a->x;
     out->y = a->y;
@@ -302,12 +308,21 @@ void scale_v4(vec4* a, float scalar)
 
 float dot_v4(vec4* a, vec4* b)
 {
-    return (a->x * b->x) + (a->y * b->y) + (a->z * b->z) + (a->w * b->w);;
+    return (a->x * b->x) + (a->y * b->y) + (a->z * b->z) + (a->w * b->w);
 }
 
 float length_v4(vec4* a)
 {
     return SQRT_F((a->x * a->x) + (a->y * a->y) + (a->z * a->z) + (a->w * a->w));
+}
+
+void normalize_v4(vec4* a)
+{
+    float length = length_v4(a);
+    a->x /= length;
+    a->y /= length;
+    a->z /= length;
+    a->w /= length;
 }
 
 /*
@@ -383,7 +398,7 @@ void scale_m3(mat3 out, float x, float y)
     out[4] *= y;          
 }
 
-void scale_whole_m3(mat3 source, float scalar)
+void uniform_scale_m3(mat3 source, float scalar)
 {
     source[0] *= scalar;
     source[1] *= scalar;
@@ -511,7 +526,7 @@ void scale_m4(mat4 out, float x, float y, float z)
     out[10] *= z;        
 }
 
-void scale_whole_m4(mat4 source, float scalar)
+void uniform_scale_m4(mat4 source, float scalar)
 {
     source[0] *= scalar;
     source[1] *= scalar;
@@ -577,8 +592,9 @@ void rotate_m4(mat4 out, float theta, vec3* axis)
 
 /*
   Very similar to glm::ortho,
-   inspired by https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/orthographic-projection-matrix
-   http://www.songho.ca/opengl/gl_projectionmatrix.html   
+  inspired by:
+  https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/orthographic-projection-matrix
+  http://www.songho.ca/opengl/gl_projectionmatrix.html   
 */
 
 void frustum(mat4 out, float l, float r, float t, float b, float n, float f)

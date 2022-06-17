@@ -326,19 +326,19 @@ void set_int(char* name, int val)
     glUniform1i(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val);    
 }
 
-void set_vec4f(char* name, float* val)
+void set_vec4f(char* name, float a, float b, float c, float d)
 {
-    glUniform4f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val[0], val[1], val[2], val[3]);    
+    glUniform4f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b, c, d);    
 }
 
-void set_vec3f(char* name, float* val)
+void set_vec3f(char* name, float a, float b, float c)
 {
-    glUniform3f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val[0], val[1], val[2]);        
+    glUniform3f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b, c);        
 }
 
-void set_vec2f(char* name, float* val)
+void set_vec2f(char* name, float a, float b)
 {
-    glUniform2f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val[0], val[1]);        
+    glUniform2f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b);        
 }
 
 void set_mat4f(char* name, float* val)
