@@ -628,7 +628,7 @@ void ortho(mat4 out, float l, float r, float b, float t, float n, float f)
     out[6] = 0.0f;
     out[7] = 0.0f;
     out[8] = 0.0f;
-    out[9] = 0.0f;    
+    out[9] = 0.0f;
     out[10] = - 2.0f / (f - n);
     out[11] = 0.0f;
     out[12] = -(r + l) / (r - l);

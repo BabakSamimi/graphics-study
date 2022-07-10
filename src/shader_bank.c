@@ -12,7 +12,8 @@ static const char* fragment_define = "#define FRAGMENT_SHADER\n";
 
 static unsigned char* paths[][2] = {
     { "src\\cube.glsl", "cube" },
-    { "src\\light.glsl", "light" },    
+    { "src\\light.glsl", "light" },
+    { "src\\ui.glsl", "ui" }, 
   
 };
 
@@ -205,11 +206,11 @@ void use_program_name(unsigned char* program_name)
 
     if(!found)
     {
-        found = 0; // reuse
-        unsigned int f_index = 0;
+        found = 0; // reused
+        unsigned int f_index = 0; // if faulty program found, f_index will be the index corresponding to that faulty program
         char* faulty_program = faulty_program_names[f_index];
             
-        while(faulty_program)
+        while(!found)
         {
             if(faulty_program == program_name)
             {

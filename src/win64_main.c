@@ -10,8 +10,8 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 #define ArrayCount(A) (sizeof((A)) / sizeof((A)[0]))
 
-int window_width = 1280;
-int window_height = 720;
+int window_width = 1920;
+int window_height = 1080;
 
 // app code
 #define STB_IMAGE_IMPLEMENTATION
@@ -106,6 +106,10 @@ int main(void)
 	
 	glViewport(0,0, window_width, window_height);
     glEnable(GL_DEPTH_TEST);
+    
+    // glEnable(GL_BLEND);
+    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
     glfwSwapInterval(1);
 	
 	// Register GLFW callbacks
@@ -175,6 +179,19 @@ int main(void)
         -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
     };
 
+    // unit square, first quadrant of NDC
+    float quad_vert[] = {
+        0.0f, 1.0f, 0.0f, // (0, 1)
+        1.0f, 0.0f, 0.0f, // (1, 0)
+
+        0.0f, 0.0f, 0.0f, // (0, 0)       
+        1.0f, 1.0f, 0.0f, // (1, 1)
+    };
+
+    unsigned int quad_indices[] = {
+        0, 1, 2,
+        0, 1, 3,
+    };
     
     // Index Buffer
     unsigned int indices[] = {  // note that we start from 0!
@@ -187,6 +204,7 @@ int main(void)
     // Create a VAO to store the layout of our attributes
     unsigned int VBO, VAO, EBO, texture0, texture1;
     unsigned int light_VAO;
+    unsigned int ui_VAO, ui_VBO, ui_EBO;
     
     // Setup VAO
     glGenVertexArrays(1, &VAO);    
@@ -196,12 +214,14 @@ int main(void)
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
+    
     // Setup vertex attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);    
+    glEnableVertexAttribArray(1);
+    
+    glBindVertexArray(0);
 
     // Setup light cube
     glGenVertexArrays(1, &light_VAO);    
@@ -210,8 +230,28 @@ int main(void)
     glBindBuffer(GL_ARRAY_BUFFER, VBO); // re-use the same VBO
     
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);    
+    glEnableVertexAttribArray(0);
+    
+    glBindVertexArray(0);
 
+    // UI 
+    glGenVertexArrays(1, &ui_VAO);
+    glBindVertexArray(ui_VAO);
+
+    glGenBuffers(1, &ui_VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, ui_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vert), quad_vert, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &ui_EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ui_EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_indices), quad_indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);    
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);      
+    
     /*
     // Setup EBO
     glGenBuffers(1, &EBO);
@@ -401,6 +441,47 @@ int main(void)
         
         glBindVertexArray(light_VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // UI
+        {        
+            use_program_name("ui");
+        
+            mat4 ortho_proj;
+
+            init_diag_m4(model, 1.0f);
+            init_diag_m4(ortho_proj, 1.0f);
+            ortho(ortho_proj, 0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f);
+
+            // Size and scaling
+            float rect_width = 500.0f;
+            float rect_height = 200.0f;
+
+            float rect_width_ndc = rect_width / window_width;
+            float rect_height_ndc = rect_height / window_height;        
+
+            scale_m4(model, rect_width_ndc, rect_height_ndc, 0.0f);
+
+            // Positioning
+            vec3 rect_pos;
+            init_v3(&rect_pos, 0.5f - rect_width_ndc * 0.5f, 0.5f - rect_height_ndc * 0.5f, 0.0f);
+
+            translate_m4(model, &rect_pos);
+
+            set_mat4f("model", model);
+            set_mat4f("projection", ortho_proj);
+            set_vec3f("color", 0.0f, 255.0f, 0.0f);
+            set_float("scale", 0.5f);
+        
+            glBindVertexArray(ui_VAO);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        }
+        /*
+        set_mat4f("projection", ortho_proj);
+        set_vec3f("color", 0.0f, 255.0f, 0.0f);
+        set_float("scale", 1.0f);
+        
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);        
+        */
         
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
