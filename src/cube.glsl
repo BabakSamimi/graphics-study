@@ -41,7 +41,7 @@ in vec3 frag_pos;
 out vec4 frag_color;
 
 uniform vec3 object_color;
-uniform vec3 view_pos;
+uniform vec3 cam_pos;
 
 uniform vec3 light_color;
 uniform Light light;
@@ -62,7 +62,7 @@ void main()
     vec3 diffuse = (diffuse_coeff * material.diffuse) * light.diffuse;
 
     // Specular
-    vec3 view_dir = normalize(view_pos - frag_pos);
+    vec3 view_dir = normalize(cam_pos - frag_pos);
     vec3 reflect_dir = reflect(-light_dir, unit_normal);
     
     float specular_strength = 0.5;
@@ -70,6 +70,7 @@ void main()
     vec3 specular =  (specular_coeff * material.specular) * light.specular;
 
     frag_color = vec4((ambient + diffuse + specular), 1.0);
+    
 }
 
 #endif

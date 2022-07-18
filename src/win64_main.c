@@ -332,8 +332,9 @@ int main(void)
         init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 0.1f, 4.0f);        
     }
 
-    vec3 light_pos;
+    vec3 light_pos, light_color;
     init_v3(&light_pos, -2.0f, 0.5f, 1.0f);
+    init_v3(&light_color, 0.0f, 1.0f, 1.0f);
     
     double reload_time = glfwGetTime();
     int frames_elapsed = 0;
@@ -392,28 +393,35 @@ int main(void)
         
         light_pos.x = 2.0f * sin(time_value) * cos(time_value);
         light_pos.y = 2.0f * sin(time_value) * sin(time_value);
-        light_pos.z = 2.0f * cos(time_value);
-        
+        light_pos.z = -2.0f; //2.0f * cos(time_value);
+
+        light_color.x = (sin(time_value) + 1) / 2;
+        light_color.y = (cos(time_value) + 1) / 2;
+        light_color.z = 0.7 * ((sin(time_value) + 1) / 2);
+
+#if 0
         light_pos.x = -2.0f;
         light_pos.y = 0.5f;
         light_pos.z = 1.0f;
+#endif
         
         //set_float("u_time", time_value);        
         set_vec3f("object_color", 0.4f, 0.2f, 0.6f);
-        set_vec3f("light_color", 1.0f, 1.0f, 1.0f);
+        set_vec3f("light_color", 1.0f, 0.0f, 0.0f);
         set_vec3f("light_pos", light_pos.x, light_pos.y, light_pos.z);
-        set_vec3f("view_pos", cam.position.x, cam.position.y, cam.position.z);
+        set_vec3f("cam_pos", cam.position.x, cam.position.y, cam.position.z);
 
         set_vec3f("material.ambient", 0.4f, 0.2f, 0.6f);
         set_vec3f("material.diffuse", 0.4f, 0.2f, 0.6f);
         set_vec3f("material.specular", 0.5f, 0.5f, 0.5f);
         set_float("material.shininess", 32.0f);
 
-        set_vec3f("light.position", light_pos.x, light_pos.y, light_pos.z);       
-        set_vec3f("light.ambient", 0.2f, 0.2f, 0.2f);
-        set_vec3f("light.diffuse", 0.5f, 0.5f, 0.5f);
+        set_vec3f("light.position", light_pos.x, light_pos.y, light_pos.z);
+        
+        set_vec3f("light.ambient", light_color.x * 0.2f, light_color.y * 0.2f, light_color.z * 0.2f);
+        set_vec3f("light.diffuse", light_color.x, light_color.y, light_color.z); // color of light
         set_vec3f("light.specular", 1.0f, 1.0f, 1.0f);
-                            
+
         init_diag_m4(model, 1.0f);
         
         // Rotate in model space        
@@ -431,9 +439,12 @@ int main(void)
 
         // Render light cube
         use_program_name("light");
+        
         init_diag_m4(model, 1.0f);        
         scale_m4(model, 0.2f, 0.2f, 0.2f);       
         translate_m4(model, &light_pos);
+
+        set_vec3f("light_color", light_color.x, light_color.y, light_color.z);
         
         set_mat4f("model", model);
         set_mat4f("view", view);
@@ -442,6 +453,7 @@ int main(void)
         glBindVertexArray(light_VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
+#if 0        
         // UI
         {        
             use_program_name("ui");
@@ -454,7 +466,7 @@ int main(void)
 
             // Size and scaling
             float rect_width = 500.0f;
-            float rect_height = 200.0f;
+            float rect_height = 200.0f;            
 
             float rect_width_ndc = rect_width / window_width;
             float rect_height_ndc = rect_height / window_height;        
@@ -475,13 +487,7 @@ int main(void)
             glBindVertexArray(ui_VAO);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
-        /*
-        set_mat4f("projection", ortho_proj);
-        set_vec3f("color", 0.0f, 255.0f, 0.0f);
-        set_float("scale", 1.0f);
-        
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);        
-        */
+#endif        
         
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
