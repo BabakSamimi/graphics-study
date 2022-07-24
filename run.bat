@@ -1,5 +1,3 @@
 @echo off
 
-pushd bin
-main.exe
-popd
+bin\main.exe

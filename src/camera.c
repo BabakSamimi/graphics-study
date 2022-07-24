@@ -1,13 +1,12 @@
 #include "camera.h"
 
-void init_camera(Camera* cam, vec3* pos, vec3* dir, vec3* up, float fov, float sensitivity, float speed)
+void init_camera(Camera* cam, vec3* pos, vec3* dir, vec3* up, float fov, float speed)
 {
     copy_v3(&cam->position, pos);
     copy_v3(&cam->direction, dir);
     copy_v3(&cam->world_up, up);
     
     cam->fov = fov;
-    cam->sensitivity = sensitivity;
     cam->speed = speed;
 
     cam->pitch = 0.0f;

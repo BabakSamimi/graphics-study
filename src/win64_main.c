@@ -10,8 +10,8 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 #define ArrayCount(A) (sizeof((A)) / sizeof((A)[0]))
 
-int window_width = 1920;
-int window_height = 1080;
+int window_width = 1280;
+int window_height = 720;
 
 // app code
 #define STB_IMAGE_IMPLEMENTATION
@@ -37,6 +37,10 @@ typedef struct
     double mouse_y;
     double mouse_last_y;
 
+    float sensitivity;
+
+    int camera_control;
+
     int reloading_shaders;
     
 } AppState;
@@ -51,9 +55,32 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void process_input(GLFWwindow* window)
 {
-	if(PRESSED(GLFW_KEY_ESCAPE))
-		glfwSetWindowShouldClose(window, true);
-	else if(!state.reloading_shaders && PRESSED(GLFW_KEY_R))
+
+
+}
+
+static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    {
+        
+        if(state.camera_control)
+        {
+            // Disable fps control and show cursor
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);  
+        }
+        else
+        {
+            // Enable fps control and disable cursor
+            glfwGetCursorPos(window, &state.mouse_last_x, &state.mouse_last_y);
+            
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
+        }
+        
+        state.camera_control = !state.camera_control;
+        
+    }    
+	else if(!state.reloading_shaders && key == GLFW_KEY_R && action == GLFW_PRESS)
     {
         state.reloading_shaders = 1;
         printf("R!\n");
@@ -71,6 +98,44 @@ void scroll_callback(GLFWwindow* window, double x_offset, double y_offset)
         state.fov = 120.0f;
 
     printf("New FOV Value: %.2f\n", state.fov);
+}
+
+unsigned int load_texture(char* path, int flipped)
+{
+    // Setup Texture
+    unsigned int texture;
+    glGenTextures(1, &texture);
+
+    // Load our texture
+    int tex_width, tex_height, nr_channels;
+    unsigned char* tex_data = stbi_load(path, &tex_width, &tex_height, &nr_channels, 0);
+    
+    if(tex_data)
+    {
+        GLenum format;
+        
+        if (nr_channels == 3)
+            format = GL_RGB;
+        else if (nr_channels == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, texture);
+        
+        glTexImage2D(GL_TEXTURE_2D, 0, format, tex_width, tex_height, 0, format, GL_UNSIGNED_BYTE, tex_data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        glBindTexture(GL_TEXTURE_2D, 0);    
+        stbi_set_flip_vertically_on_load(flipped); // this image starts at top left            
+        stbi_image_free(tex_data);
+    }
+    else printf("Texture was not loaded.\n");
+    
+    return texture;
 }
 
 int main(void)
@@ -114,6 +179,7 @@ int main(void)
 	
 	// Register GLFW callbacks
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetKeyCallback(window, key_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);    
   
@@ -134,49 +200,50 @@ int main(void)
 #endif
     
 
-    // Cube with vertices and normals
+    // Cube with vertices, normals and texture coordinates
     float vertices[] = {
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        // positions            // normals              // texture coords
+        -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,  	0.0f,  0.0f,
+        0.5f, -0.5f, -0.5f,     0.0f,  0.0f, -1.0f,  	1.0f,  0.0f,
+        0.5f,  0.5f, -0.5f,     0.0f,  0.0f, -1.0f,  	1.0f,  1.0f,
+        0.5f,  0.5f, -0.5f,     0.0f,  0.0f, -1.0f,  	1.0f,  1.0f,
+        -0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,  	0.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,  	0.0f,  0.0f,
 
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,  	0.0f,  0.0f,
+        0.5f, -0.5f,  0.5f,     0.0f,  0.0f,  1.0f,  	1.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  	0.0f,  0.0f,  1.0f,  	1.0f,  1.0f,
+        0.5f,  0.5f,  0.5f,  	0.0f,  0.0f,  1.0f,  	1.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,  	0.0f,  0.0f,  1.0f,  	0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,  	0.0f,  0.0f,  1.0f,  	0.0f,  0.0f,
 
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, 	-1.0f,  0.0f,  0.0f,  	1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, 	-1.0f,  0.0f,  0.0f,  	1.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f, 	-1.0f,  0.0f,  0.0f,  	0.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f, 	-1.0f,  0.0f,  0.0f,  	0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f, 	-1.0f,  0.0f,  0.0f,  	0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, 	-1.0f,  0.0f,  0.0f,  	1.0f,  0.0f,
 
-        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-        0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-        0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  	1.0f,  0.0f,  0.0f,  	1.0f,  0.0f,
+        0.5f,  0.5f, -0.5f,  	1.0f,  0.0f,  0.0f,  	1.0f,  1.0f,
+        0.5f, -0.5f, -0.5f,  	1.0f,  0.0f,  0.0f,  	0.0f,  1.0f,
+        0.5f, -0.5f, -0.5f,  	1.0f,  0.0f,  0.0f,  	0.0f,  1.0f,
+        0.5f, -0.5f,  0.5f,  	1.0f,  0.0f,  0.0f,  	0.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  	1.0f,  0.0f,  0.0f,  	1.0f,  0.0f,
 
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-        0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,  	0.0f,  1.0f,
+        0.5f, -0.5f, -0.5f,  	0.0f, -1.0f,  0.0f,  	1.0f,  1.0f,
+        0.5f, -0.5f,  0.5f,  	0.0f, -1.0f,  0.0f,  	1.0f,  0.0f,
+        0.5f, -0.5f,  0.5f,  	0.0f, -1.0f,  0.0f,  	1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,  	0.0f, -1.0f,  0.0f,  	0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  	0.0f, -1.0f,  0.0f,  	0.0f,  1.0f,
 
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-        0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+        -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,  0.0f,  1.0f,
+        0.5f,  0.5f, -0.5f,  	0.0f,  1.0f,  0.0f,  1.0f,  1.0f,
+        0.5f,  0.5f,  0.5f,  	0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
+        0.5f,  0.5f,  0.5f,  	0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  	0.0f,  1.0f,  0.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  	0.0f,  1.0f,  0.0f,  0.0f,  1.0f
     };
 
     // unit square, first quadrant of NDC
@@ -197,7 +264,14 @@ int main(void)
     unsigned int indices[] = {  // note that we start from 0!
         0, 1, 3,   // first triangle
         1, 2, 3    // second triangle
-    };  
+    };
+
+    float padding = 2.0f;
+    vec3 box_positions[6] = {
+        {0}, {-1.0f - padding, 0.0f, 0.0f}, {1.0f + padding, 0.0f, 0.0f},
+        {0.0f, 1.0f + padding, 0.0f},
+        {0.0f, 0.0f, -1.0f - padding}, {0.0f, 0.0f, 1.0f + padding}
+    };
     
     init_shader_bank();
     
@@ -216,10 +290,12 @@ int main(void)
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     
     // Setup vertex attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);    
     
     glBindVertexArray(0);
 
@@ -229,7 +305,7 @@ int main(void)
     
     glBindBuffer(GL_ARRAY_BUFFER, VBO); // re-use the same VBO
     
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     
     glBindVertexArray(0);
@@ -252,64 +328,25 @@ int main(void)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);      
     
-    /*
-    // Setup EBO
+    
+    /* Setup EBO
     glGenBuffers(1, &EBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);    
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    */
 
-    // Setup Texture    
-    glGenTextures(1, &texture0);
-    glBindTexture(GL_TEXTURE_2D, texture0);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    int tex_width, tex_height, nr_channels;
-    unsigned char* tex_data = stbi_load("bin\\assets\\container.jpg", &tex_width, &tex_height, &nr_channels, 0);
-    if(tex_data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex_data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else printf("Texture was not loaded.\n");
-
-    glGenTextures(1, &texture1);
-    glBindTexture(GL_TEXTURE_2D, texture1);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    stbi_set_flip_vertically_on_load(true); // this image starts at top left
-    tex_data = stbi_load("bin\\assets\\dices.png", &tex_width, &tex_height, &nr_channels, 0);
-    if(tex_data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_width, tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else printf("Texture was not loaded.\n");
-    
-    stbi_image_free(tex_data);
+    unsigned int diffuse_map = load_texture("bin\\assets\\container2.png", 1);
+    unsigned int specular_map = load_texture("bin\\assets\\container2_specular.png", 1);
+    unsigned int emission_map = load_texture("bin\\assets\\container2_emission.jpg", 0);
 
     // Update texture units in our fragment shader
     use_program_name("cube");
-    set_int("texture0", 0);
-    set_int("texture1", 1);
-
-    // bind textures
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture0);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, texture1);
-    
-    */
+    set_int("material.diffuse", 0);
+    set_int("material.specular", 1);
+    set_int("material.emission", 2);
     
     state.target_frame_ms = 1000.0f * (1.0f / 60.0f);
     state.delta_time = 0.0f;
@@ -321,6 +358,9 @@ int main(void)
     state.mouse_last_x = (float)window_width / 2.0f;
     state.mouse_last_y = (float)window_height / 2.0f;
 
+    state.sensitivity = 0.1f;
+    state.camera_control = 1;
+
     Camera cam;
     {    
         vec3 cam_pos, cam_dir, cam_up;
@@ -329,11 +369,11 @@ int main(void)
         init_v3(&cam_dir, 0.0f, 0.0f, -1.0f);
         init_v3(&cam_up, 0.0f, 1.0f, 0.0f);
         
-        init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 0.1f, 4.0f);        
+        init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 4.0f);        
     }
 
     vec3 light_pos, light_color;
-    init_v3(&light_pos, -2.0f, 0.5f, 1.0f);
+    init_v3(&light_pos, 0.0f, 0.0f, 0.0f);
     init_v3(&light_color, 0.0f, 1.0f, 1.0f);
     
     double reload_time = glfwGetTime();
@@ -346,13 +386,21 @@ int main(void)
         float current_frame = glfwGetTime();
         
 		process_input(window);
-        glfwGetCursorPos(window, &state.mouse_x, &state.mouse_y);
-        
-        float x_offset = (state.mouse_x - state.mouse_last_x) * cam.sensitivity;
-        float y_offset = (state.mouse_last_y - state.mouse_y) * cam.sensitivity;
 
-        update_camera_transform(&cam, x_offset, y_offset);        
-        cam.fov = state.fov;
+        if(state.camera_control)
+        {
+            glfwGetCursorPos(window, &state.mouse_x, &state.mouse_y);
+        
+            float x_offset = (state.mouse_x - state.mouse_last_x) * state.sensitivity;
+            float y_offset = (state.mouse_last_y - state.mouse_y) * state.sensitivity;
+
+            update_camera_transform(&cam, x_offset, y_offset);
+
+            state.mouse_last_x = state.mouse_x;
+            state.mouse_last_y = state.mouse_y;            
+            cam.fov = state.fov;
+
+        }            
         
         float walking_speed = cam.speed * state.delta_time;                        
         if(PRESSED(GLFW_KEY_W))
@@ -362,7 +410,8 @@ int main(void)
         if(PRESSED(GLFW_KEY_A))
             move_camera(&cam, LEFT, walking_speed*0.8f);            
         if(PRESSED(GLFW_KEY_D))
-            move_camera(&cam, RIGHT, -walking_speed*0.8f);        
+            move_camera(&cam, RIGHT, -walking_speed*0.8f);
+        
         
         /* Render starts here */
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -388,9 +437,23 @@ int main(void)
         /* Render cube */
         use_program_name("cube");
 
+        set_mat4f("view", view);
+        set_mat4f("projection", projection);                         
+
+        // bind textures
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, diffuse_map);
+        
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, specular_map);
+
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, emission_map);
+
         /* Update uniforms  */
         float time_value = glfwGetTime();
-        
+
+#if 0       
         light_pos.x = 2.0f * sin(time_value) * cos(time_value);
         light_pos.y = 2.0f * sin(time_value) * sin(time_value);
         light_pos.z = -2.0f; //2.0f * cos(time_value);
@@ -398,46 +461,65 @@ int main(void)
         light_color.x = (sin(time_value) + 1) / 2;
         light_color.y = (cos(time_value) + 1) / 2;
         light_color.z = 0.7 * ((sin(time_value) + 1) / 2);
+#else
+        light_pos.x = 0.0f;
+        light_pos.y = 1.0f;
+        light_pos.z = 5.0f;
 
-#if 0
-        light_pos.x = -2.0f;
-        light_pos.y = 0.5f;
-        light_pos.z = 1.0f;
+        light_color.x = 1.0f;
+        light_color.y = 1.0f;
+        light_color.z = 1.0f;
 #endif
         
         //set_float("u_time", time_value);        
-        set_vec3f("object_color", 0.4f, 0.2f, 0.6f);
-        set_vec3f("light_color", 1.0f, 0.0f, 0.0f);
-        set_vec3f("light_pos", light_pos.x, light_pos.y, light_pos.z);
         set_vec3f("cam_pos", cam.position.x, cam.position.y, cam.position.z);
 
-        set_vec3f("material.ambient", 0.4f, 0.2f, 0.6f);
-        set_vec3f("material.diffuse", 0.4f, 0.2f, 0.6f);
-        set_vec3f("material.specular", 0.5f, 0.5f, 0.5f);
         set_float("material.shininess", 32.0f);
 
-        set_vec3f("light.position", light_pos.x, light_pos.y, light_pos.z);
+        //set_vec3f("light.direction", -0.2f, 0.3f, -0.3f);
+        set_vec3f("light.position", cam.position.x, cam.position.y, cam.position.z);
+        set_vec3f("light.direction", cam.direction.x, cam.direction.y, cam.direction.z);
         
-        set_vec3f("light.ambient", light_color.x * 0.2f, light_color.y * 0.2f, light_color.z * 0.2f);
-        set_vec3f("light.diffuse", light_color.x, light_color.y, light_color.z); // color of light
-        set_vec3f("light.specular", 1.0f, 1.0f, 1.0f);
+        set_float("light.power", 15.0f);
+        set_float("light.cutoff", (float)cos(RADIANS(15.0f)));
+        set_float("light.outer_cutoff", (float)cos(RADIANS(18.0f)));
 
-        init_diag_m4(model, 1.0f);
+        float intensity = 0.1f;
+        set_vec3f("light.ambient", light_color.x * intensity, light_color.y * intensity, light_color.z * intensity);
+        set_vec3f("light.diffuse", light_color.x, light_color.y, light_color.z); // color of light
+        set_vec3f("light.specular", light_color.x, light_color.y, light_color.z);        
         
         // Rotate in model space        
         //init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
-        //rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);                
+        //rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);               
+        
+#if 1
+        for(unsigned int box_index = 0; box_index < 6; box_index++)
+        {
+            init_diag_m4(model, 1.0f);
 
+            init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
+            rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);
+            translate_m4(model, &box_positions[box_index]);
+            
+            set_mat4f("model", model);
+            
+            glBindVertexArray(VAO);               
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+            
+        }
+#else
+        init_diag_m4_(model, 1.0f);
         set_mat4f("model", model);
-        set_mat4f("view", view);
-        set_mat4f("projection", projection);                 
         
         /* Draw cube */
-        glBindVertexArray(VAO);
+        glBindVertexArray(VAO);                       
         glDrawArrays(GL_TRIANGLES, 0, 36);
         //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
-
+#endif
+        
         // Render light cube
+#if 0        
         use_program_name("light");
         
         init_diag_m4(model, 1.0f);        
@@ -452,7 +534,8 @@ int main(void)
         
         glBindVertexArray(light_VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
-
+#endif
+        
 #if 0        
         // UI
         {        
@@ -503,9 +586,6 @@ int main(void)
             reload_shader_bank();
             reload_time = end_time;
         }
-
-        state.mouse_last_x = state.mouse_x;
-        state.mouse_last_y = state.mouse_y;
         
         state.delta_time = current_frame - state.last_frame;
         state.last_frame = current_frame;

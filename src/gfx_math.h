@@ -1,3 +1,8 @@
+/*
+  Version 0.1.0
+
+*/
+
 #ifndef GFX_MATH_H
 #define GFX_MATH_H
 #pragma warning(disable:4201)
