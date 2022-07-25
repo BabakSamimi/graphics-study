@@ -132,10 +132,76 @@ unsigned int load_texture(char* path, int flipped)
         glBindTexture(GL_TEXTURE_2D, 0);    
         stbi_set_flip_vertically_on_load(flipped); // this image starts at top left            
         stbi_image_free(tex_data);
+        
+        printf("Loaded texture: %s\n", path);
     }
     else printf("Texture was not loaded.\n");
     
     return texture;
+}
+
+/*
+  length:
+      is the length of the message excluding null-terminator
+  
+  source, type and severity:
+      are the message's enumerators
+  
+  id:
+      is the message's identifier
+  
+  userParam:
+      is for storing custom data by passing in a struct, this is done via glDebugMessageCallback(...)
+  
+  
+*/
+
+char* gl_debug_source_strings[6] = {
+    "OpenGL API", "Window system", "Shader compiler",
+    "Third party", "Application", "Other",
+};
+
+char* gl_debug_type_strings[8] = {
+    "OpenGL API", "Deprecated behaviour", "Undefined behaviour",
+    "Portability", "Performance",
+    "Marker", "Push group", "Pop group",
+};
+
+char* gl_debug_severity_strings[4] = {
+    "High", "Medium", "Low", "Notification",
+};
+
+void APIENTRY gl_debug_output(GLenum source, GLenum type, GLuint id,
+                              GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+    
+    char* source_str = gl_debug_source_strings[(ArrayCount(gl_debug_source_strings) - ((GL_DEBUG_SOURCE_OTHER + 1) - source)) % ArrayCount(gl_debug_source_strings)];
+
+    // Two different branches because there's a gap,
+    // We can probably avoid branching if we find a better mathematical formula to index the strings
+    char* type_str;
+    if(type <= GL_DEBUG_TYPE_OTHER)
+    {
+        type_str = gl_debug_type_strings[(ArrayCount(gl_debug_type_strings)- 2 - ((GL_DEBUG_TYPE_OTHER + 1) - type)) % ArrayCount(gl_debug_type_strings)];
+    }
+    else
+    {
+        type_str = gl_debug_type_strings[(ArrayCount(gl_debug_type_strings) - 5 - ((GL_DEBUG_TYPE_POP_GROUP + 1) - type)) % ArrayCount(gl_debug_type_strings)];
+    }
+
+    char* severity_str;
+    if(severity == GL_DEBUG_SEVERITY_NOTIFICATION)
+    {
+        severity_str = gl_debug_severity_strings[3];
+    }
+    else
+    {
+        severity_str = gl_debug_severity_strings[(ArrayCount(gl_debug_severity_strings) - ((GL_DEBUG_SEVERITY_LOW + 1) - severity)) % ArrayCount(gl_debug_severity_strings)];        
+    }
+
+    
+    printf("[OpenGL] (%d) [Source: %s] [Type: %s] [Severity: %s]:\n %s\n\n", id, source_str, type_str, severity_str, message);
+    
 }
 
 int main(void)
@@ -153,7 +219,11 @@ int main(void)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-	
+    
+#if DEBUG
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+#endif
+    
     // Create a window and its OpenGL context
     window = glfwCreateWindow(window_width, window_height, "learnopengl", NULL, NULL);
 	
@@ -165,8 +235,7 @@ int main(void)
     }
 
     // Make the window's context current
-    glfwMakeContextCurrent(window);    
-    
+    glfwMakeContextCurrent(window);        
 	gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
 	
 	glViewport(0,0, window_width, window_height);
@@ -181,12 +250,29 @@ int main(void)
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetKeyCallback(window, key_callback);
     glfwSetScrollCallback(window, scroll_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);    
-  
-    printf("Vendor: %s, %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER));
-	int major_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MAJOR);
-    int minor_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR);
-	printf("OpenGL version %d.%d\n", major_ver, minor_ver);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // Print status
+    {            
+        printf("Vendor: %s, %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER));
+        int major_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MAJOR);
+        int minor_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR);
+        printf("OpenGL version %d.%d\n", major_ver, minor_ver);
+
+#if DEBUG   
+        int flags;
+        glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+        if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
+        {
+            printf("Successfully created an OpenGL debug context.\n");
+            glEnable(GL_DEBUG_OUTPUT);
+            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+            glDebugMessageCallback(gl_debug_output, 0);
+            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE);
+        }
+#endif
+        
+    }    
 
     // Vertex Buffer
 #if 0     
@@ -272,8 +358,17 @@ int main(void)
         {0.0f, 1.0f + padding, 0.0f},
         {0.0f, 0.0f, -1.0f - padding}, {0.0f, 0.0f, 1.0f + padding}
     };
+
+    // Compile shaders
+    register_shader("..\\src\\cube.glsl", "cube");
+    register_shader("..\\src\\light.glsl", "light");
+    register_shader("..\\src\\ui.glsl", "ui");
     
-    init_shader_bank();
+    if(!init_shader_bank())
+    {
+        printf("Failed init of shader bank!\n");
+        exit(0);
+    }
     
     // Create a VAO to store the layout of our attributes
     unsigned int VBO, VAO, EBO, texture0, texture1;
@@ -338,9 +433,9 @@ int main(void)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     */
 
-    unsigned int diffuse_map = load_texture("bin\\assets\\container2.png", 1);
-    unsigned int specular_map = load_texture("bin\\assets\\container2_specular.png", 1);
-    unsigned int emission_map = load_texture("bin\\assets\\container2_emission.jpg", 0);
+    unsigned int diffuse_map = load_texture("assets\\container2.png", 1);
+    unsigned int specular_map = load_texture("assets\\container2_specular.png", 1);
+    unsigned int emission_map = load_texture("assets\\container2_emission.jpg", 0);
 
     // Update texture units in our fragment shader
     use_program_name("cube");

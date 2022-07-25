@@ -10,18 +10,12 @@ static const char* version_define = "#version 460 core\n";
 static const char* vertex_define = "#define VERTEX_SHADER\n";
 static const char* fragment_define = "#define FRAGMENT_SHADER\n";
 
-static unsigned char* paths[][2] = {
-    { "src\\cube.glsl", "cube" },
-    { "src\\light.glsl", "light" },
-    { "src\\ui.glsl", "ui" }, 
+static unsigned char* paths[MAX_SHADER_PROGRAMS][2] = {
+    { "..\\src\\cube.glsl", "cube" },
+    { "..\\src\\light.glsl", "light" },
+    { "..\\src\\ui.glsl", "ui" }, 
   
 };
-
-/* List of faulty programs */
-// NOTE: Only allocated for 64 programs 
-#define MAX_FAULTY_PROGRAMS 64
-static unsigned char* faulty_program_names[MAX_FAULTY_PROGRAMS] = {0};
-static unsigned int faulty_program_handles[MAX_FAULTY_PROGRAMS] = {0};
 
 #define SHADER_BUFFER_SIZE (4*1024)
 #define SHADER_LOG_SIZE (1*1024)
@@ -42,26 +36,33 @@ static int FILE_size(FILE* fp)
     return result;
 }
 
-int init_shader_bank()
+void register_shader(char* path, char* name)
+{
+    shaders.paths[shaders.programs_count][0] = path;
+    shaders.paths[shaders.programs_count][1] = name;
+
+    shaders.programs_count++;
+}
+
+bool init_shader_bank()
 {
     shaders.active_program_index = 0;
     shader_src = (unsigned char*)calloc(SHADER_BUFFER_SIZE, sizeof(unsigned char));
-    shaders.paths = paths;
+    //shaders.paths = paths;
 
     /* TODO: Replace malloc/calloc with custom allocator */
     shaders.mod = (time_t*)calloc(ArrayCount(paths), sizeof(time_t)); // calloc inits everything to zero
-    shaders.programs_count = ArrayCount(paths);
-    shaders.programs = (unsigned int*)calloc(shaders.programs_count, sizeof(unsigned int));
-    
+    //shaders.programs_count = ArrayCount(paths);
+    shaders.programs = (unsigned int*)calloc(shaders.programs_count, sizeof(unsigned int));    
     
     // Populate shader bank
-    reload_shader_bank();
-	
-    return 0;    
+    return reload_shader_bank();
+	 
 }
 
-int reload_shader_bank()
-{   
+bool reload_shader_bank()
+{
+    bool successful = true;
 
     for(unsigned char idx = 0;
         idx < shaders.programs_count;
@@ -88,7 +89,7 @@ int reload_shader_bank()
         if(fstat.st_mtime > shaders.mod[idx])
         {
             shaders.mod[idx] = fstat.st_mtime;
-            shader_changed = 1;
+            shader_changed = true;
         }
 
         if(!shader_changed)
@@ -113,7 +114,10 @@ int reload_shader_bank()
         
         shader_src[file_size] = '\0'; //fread does not append null-terminator
 
-        /* vertex_src and fragment_src copies shader_src, which is unneccesary copying */
+        // vertex_src and fragment_src copies shader_src, which is unneccesary copying
+        // TODO: Carve out the source code for the different shaders out of shader_src
+        // This can yield to more readable error printing when printing source code to
+        // the console.
         const unsigned char* const vertex_src[3] = { version_define, vertex_define, shader_src };
         const int v_length[3] = { strlen(version_define), strlen(vertex_define), file_size };
         
@@ -156,7 +160,8 @@ int reload_shader_bank()
         if(!vertex_compiled || !fragment_compiled)
         {            
             glDeleteShader(vertex_id);
-            glDeleteShader(fragment_id);                    
+            glDeleteShader(fragment_id);
+            successful = false;
             continue;
         }
                 
@@ -184,87 +189,35 @@ int reload_shader_bank()
      
     }
 	
-    return 0;    
+    return successful;    
 }
 
 void use_program_name(unsigned char* program_name)
 {
-
-    int found = 0;
     
     /* Naive */
     for(unsigned index = 0; index < shaders.programs_count; index++)
     {
         if(!strcmp(shaders.paths[index][1], program_name))
         {
-            found = 1;
             shaders.active_program_index = index;
             glUseProgram(shaders.programs[index]);
             break;
         }
     }
 
-    if(!found)
-    {
-        found = 0; // reused
-        unsigned int f_index = 0; // if faulty program found, f_index will be the index corresponding to that faulty program
-        char* faulty_program = faulty_program_names[f_index];
-            
-        while(!found)
-        {
-            if(faulty_program == program_name)
-            {
-                found = 1;
-                break;
-            }
-                
-            faulty_program = faulty_program_names[++f_index];
-        }
-
-        if(!found)
-        {
-            faulty_program_names[f_index] = program_name;
-            printf("Could not use shader program '%s'. Reason: Does not exist.\n", program_name);                             
-        }        
-    }
 }
 
 void use_program(unsigned int program)
 {
-    int found = 0;
+
     for(unsigned index = 0; index < shaders.programs_count; index++)
     {
         if(program == shaders.programs[index])
         {
-            found = 1;
             shaders.active_program_index = index;
             glUseProgram(program);
             break;
-        }
-
-    }
-
-    if(!found)
-    {
-        found = 0; // reuse
-        unsigned int f_index = 0;
-        int faulty_program = faulty_program_handles[f_index];
-            
-        while(faulty_program)
-        {
-            if(faulty_program == program)
-            {
-                found = 1;
-                break;
-            }
-                
-            faulty_program = faulty_program_handles[++f_index];
-        }
-
-        if(!found)
-        {
-            faulty_program_handles[f_index] = program;
-            printf("Could not use shader program with id '%d'. Reason: Does not exist.\n", program);
         }
 
     }
@@ -273,41 +226,16 @@ void use_program(unsigned int program)
 
 void query_program(unsigned int* program, unsigned char* program_name)
 {
-    int found = 0;
+
     /* Naive */
     for(unsigned index = 0; index < shaders.programs_count; index++)
     {
         if(!strcmp(shaders.paths[index][1], program_name))
         {
-            found = 1;
             *program = shaders.programs[index];
             break;
         }
                 
-    }
-    
-    if(!found)
-    {
-        found = 0; // reuse
-        unsigned int f_index = 0;
-        char* faulty_program = faulty_program_names[f_index];
-            
-        while(faulty_program)
-        {
-            if(faulty_program == program_name)
-            {
-                found = 1;
-                break;
-            }
-                
-            faulty_program = faulty_program_names[++f_index];
-        }
-
-        if(!found)
-        {
-            faulty_program_names[f_index] = program_name;
-            printf("Could not query shader program '%s'. Reason: Does not exist.\n", program_name);                             
-        }        
     }
     
 }
@@ -317,37 +245,37 @@ void get_active_program(unsigned int* program)
     *program = shaders.programs[shaders.active_program_index];
 }
 
-void set_float(char* name, float val)
+void set_float(unsigned char* name, float val)
 {
     glUniform1f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val);
 }
 
-void set_int(char* name, int val)
+void set_int(unsigned char* name, int val)
 {
     glUniform1i(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val);    
 }
 
-void set_vec4f(char* name, float a, float b, float c, float d)
+void set_vec4f(unsigned char* name, float a, float b, float c, float d)
 {
     glUniform4f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b, c, d);    
 }
 
-void set_vec3f(char* name, float a, float b, float c)
+void set_vec3f(unsigned char* name, float a, float b, float c)
 {
     glUniform3f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b, c);        
 }
 
-void set_vec2f(char* name, float a, float b)
+void set_vec2f(unsigned char* name, float a, float b)
 {
     glUniform2f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b);        
 }
 
-void set_mat4f(char* name, float* val)
+void set_mat4f(unsigned char* name, float* val)
 {
     glUniformMatrix4fv(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), 1, GL_FALSE, val);
 }
 
-void set_mat3f(char* name, float* val)
+void set_mat3f(unsigned char* name, float* val)
 {
     glUniformMatrix3fv(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), 1, GL_FALSE, val);
 }

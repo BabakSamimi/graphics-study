@@ -5,19 +5,21 @@
 #include <sys/stat.h> // stat
 #include <string.h> // memset, strlen, strcmp
 #include <stdlib.h> // calloc
+#include <stdbool.h>
 
 #include "glad/glad.h"
 
 #define ArrayCount(A) (sizeof((A)) / sizeof((A)[0]))
+#define MAX_SHADER_PROGRAMS 64
 
 typedef struct {
-    /* Pointer to a 2D array where every row consists of a string */
-    unsigned char* (*paths)[2];
+    /* Pointer to a 2D array where every row consists of a shader program */
+    unsigned char *paths[MAX_SHADER_PROGRAMS][2];
     
     /* Timestamp on last modification of the shader file */
     time_t* mod;
     
-    /* Programs := internal opengl ids on shader programs */
+    /* Programs := array of internal opengl ids on shader programs */
     unsigned int* programs;
     unsigned int programs_count;
 
@@ -26,8 +28,9 @@ typedef struct {
 } ShaderBank;
 
 static int FILE_size(FILE* fp);
-int init_shader_bank();
-int reload_shader_bank();
+void register_shader(char* path, char* name);
+bool init_shader_bank();
+bool reload_shader_bank();
 
 void use_program_name(unsigned char* program_name);
 void use_program(unsigned int program);
@@ -35,14 +38,14 @@ void use_program(unsigned int program);
 void query_program(unsigned int* program, unsigned char* program_name);
 void get_active_program(unsigned int* program);
     
-void set_float(char* name, float value);
-void set_int(char* name, int value);
+void set_float(unsigned char* name, float value);
+void set_int(unsigned char* name, int value);
 
-void set_vec4f(char* name, float a, float b, float c, float d);
-void set_vec3f(char* name, float a, float b, float c);
-void set_vec2f(char* name, float a, float b);
+void set_vec4f(unsigned char* name, float a, float b, float c, float d);
+void set_vec3f(unsigned char* name, float a, float b, float c);
+void set_vec2f(unsigned char* name, float a, float b);
 
-void set_mat4f(char* name, float* value);
-void set_mat3f(char* name, float* value);
+void set_mat4f(unsigned char* name, float* value);
+void set_mat3f(unsigned char* name, float* value);
 
 #endif

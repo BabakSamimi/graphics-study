@@ -92,7 +92,6 @@ void main()
     vec3 specular = light_intensity * light.specular * specular_coeff * texel_specular;
         
     frag_color = vec4((ambient + diffuse + specular), 1.0);
-    
 }
 
 #endif
