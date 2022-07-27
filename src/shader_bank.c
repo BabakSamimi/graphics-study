@@ -17,7 +17,7 @@ static unsigned char* paths[MAX_SHADER_PROGRAMS][2] = {
   
 };
 
-#define SHADER_BUFFER_SIZE (4*1024)
+#define SHADER_BUFFER_SIZE (10*1024)
 #define SHADER_LOG_SIZE (1*1024)
 
 /* Buffer for shader source code, used for compiling shaders */

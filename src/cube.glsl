@@ -32,19 +32,30 @@ struct Material {
     float shininess;    
 };
 
-struct Light {
-    
-    vec3 position;
-    vec3 direction;
-    
+struct Phong {
     vec3 ambient;
     vec3 diffuse;
-    vec3 specular;
+    vec3 specular;  
+};
 
+struct DirectionalLight {
+    vec3 direction;
+    Phong phong;    
+};
+
+struct PointLight {
+    vec3 position;
+    Phong phong;
+    float power;        
+};
+
+struct SpotLight {
+    vec3 position;
+    vec3 direction;
+    Phong phong;
     float power;
-    float cutoff; // Angle of inner cone
-    float outer_cutoff; // Angle of outer cone
-    
+    float cutoff;
+    float outer_cutoff;
 };
 
 in vec3 normal; // normal of the fragment
@@ -54,12 +65,61 @@ in vec2 tex_coords;
 out vec4 frag_color;
 
 uniform vec3 cam_pos;
-uniform Light light;
+
+uniform DirectionalLight dir_light;
+uniform PointLight pointLights[4];
+uniform SpotLight spotlight;
+
 uniform Material material;
 
-void main()
+vec3 CalculateDirLight(DirectionalLight light, vec3 normal, vec3 view_dir, Phong texels, float shininess)
 {
+    vec3 light_dir = normalize(-light.direction);
 
+    // diffuse shading
+    float diff = max(dot(normal, light_dir), 0.0);
+
+    // specular shading
+    vec3 reflect_dir = reflect(-light_dir, normal);
+    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), shininess);
+
+    // resulting light
+    vec3 ambient = light.phong.ambient * texels.diffuse;
+    vec3 diffuse = light.phong.diffuse * diff * texels.diffuse;
+    vec3 specular = light.phong.specular * spec * texels.specular;
+
+    return (ambient + diffuse + specular);
+    
+}
+
+vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 frag_pos, vec3 view_dir, Phong texels, float shininess)
+{
+    
+    vec3 light_dir = normalize(light.position - frag_pos);
+
+    // diffuse shading
+    float diff = max(dot(normal, light_dir), 0.0);
+
+    // specular shading
+    vec3 reflect_dir = reflect(-light_dir, normal);
+    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), shininess);
+
+    // Intensity calculation - inverse square law
+    float distance = length(frag_pos - light.position);
+    float light_intensity = light.power / (4*PI*distance);
+
+    // resulting light
+    vec3 ambient = light.phong.ambient * texels.diffuse;
+    vec3 diffuse = light_intensity * light.phong.diffuse * diff * texels.diffuse;
+    vec3 specular = light_intensity * light.phong.specular * spec * texels.specular;
+
+    return (ambient + diffuse + specular);
+
+}
+
+vec3 CalculateSpotLight(SpotLight light, vec3 normal, vec3 frag_pos, vec3 view_dir, Phong texels, float shininess)
+{
+    
     vec3 light_dir = normalize(light.position - frag_pos);
     
     float theta = dot(light_dir, normalize(-light.direction));
@@ -69,29 +129,44 @@ void main()
     float light_to_frag_dist = length(frag_pos - light.position);
     float light_intensity = light.power / (4*PI*light_to_frag_dist);
 
-    light_intensity *= smoothstep(0.0, 1.0, (theta - light.outer_cutoff) / epsilon);
-        
-    // get pixel colour of the surface
-    vec3 texel_diffuse = vec3(texture(material.diffuse, tex_coords)).rgb; 
-    vec3 texel_specular = vec3(texture(material.specular, tex_coords)).rgb;
-    vec3 texel_emission = vec3(texture(material.emission, tex_coords)).rgb;
+    light_intensity *= smoothstep(0.0, 1.0, (theta - light.outer_cutoff) / epsilon);        
                         
     // Diffuse
     vec3 unit_normal = normalize(normal);
-    float diffuse_coeff = max(dot(unit_normal, light_dir), 0.0);
+    float diff = max(dot(unit_normal, light_dir), 0.0);
 
     // Specular
-    vec3 view_dir = normalize(cam_pos - frag_pos);
     vec3 reflect_dir = reflect(-light_dir, unit_normal);
     
-    float specular_strength = 0.5;
-    float specular_coeff = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
+    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
+
+    vec3 ambient = light.phong.ambient * texels.diffuse;
+    vec3 diffuse = light_intensity * light.phong.diffuse * diff * texels.diffuse;    
+    vec3 specular = light_intensity * light.phong.specular * spec * texels.specular;
+
+    return (ambient + diffuse + specular);
+}    
+
+void main()
+{
+    // get pixel colour of the surface
+    Phong phong_texels;
+    phong_texels.diffuse = vec3(texture(material.diffuse, tex_coords)).rgb; 
+    phong_texels.specular = vec3(texture(material.specular, tex_coords)).rgb;
     
-    vec3 ambient = light.ambient * texel_diffuse;
-    vec3 diffuse = light_intensity * light.diffuse   * diffuse_coeff * texel_diffuse;    
-    vec3 specular = light_intensity * light.specular * specular_coeff * texel_specular;
+    vec3 view_dir = normalize(cam_pos - frag_pos);
+
+    vec3 result = CalculateDirLight(dir_light, normal, view_dir, phong_texels, material.shininess);
+
+    for(int pointlight_index = 0; pointlight_index < 4; pointlight_index++)
+    {
+        result += CalculatePointLight(pointLights[pointlight_index], normal, frag_pos, view_dir, phong_texels, material.shininess);        
+    }
+
+    result += CalculateSpotLight(spotlight, normal, frag_pos, view_dir, phong_texels, material.shininess);
+
         
-    frag_color = vec4((ambient + diffuse + specular), 1.0);
+    frag_color = vec4(result, 1.0);
 }
 
 #endif

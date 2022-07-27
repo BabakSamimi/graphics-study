@@ -359,6 +359,11 @@ int main(void)
         {0.0f, 0.0f, -1.0f - padding}, {0.0f, 0.0f, 1.0f + padding}
     };
 
+    vec3 pointlight_positions[4] = {
+        { 4.0f, 4.0f, 0.0f }, { -4.0f, 4.0f, 0.0f },
+        { 0.0f, 4.0f, 4.0f }, { 0.0f, 4.0f, -4.0f },        
+    };
+
     // Compile shaders
     register_shader("..\\src\\cube.glsl", "cube");
     register_shader("..\\src\\light.glsl", "light");
@@ -479,8 +484,6 @@ int main(void)
     {
 
         float current_frame = glfwGetTime();
-        
-		process_input(window);
 
         if(state.camera_control)
         {
@@ -572,21 +575,66 @@ int main(void)
         set_float("material.shininess", 32.0f);
 
         //set_vec3f("light.direction", -0.2f, 0.3f, -0.3f);
-        set_vec3f("light.position", cam.position.x, cam.position.y, cam.position.z);
-        set_vec3f("light.direction", cam.direction.x, cam.direction.y, cam.direction.z);
         
-        set_float("light.power", 15.0f);
-        set_float("light.cutoff", (float)cos(RADIANS(15.0f)));
-        set_float("light.outer_cutoff", (float)cos(RADIANS(18.0f)));
+        // Set directional light
+        {        
+            set_vec3f("dir_light.direction", cam.direction.x, cam.direction.y, cam.direction.z);
+            set_vec3f("dir_light.phong.ambient", 0.05f, 0.05f, 0.05f);
+            set_vec3f("dir_light.phong.diffuse", 0.3f, 0.3f, 0.3f);
+            set_vec3f("dir_light.phong.specular", 0.5f, 0.5f, 0.5f);
+        }
+        
+        // Set pointlight
+        {
+            vec3 pos = pointlight_positions[0];
+            set_float("pointLights[0].power", 5.0f);
+            set_vec3f("pointLights[0].position", pos.x, pos.y, pos.z);
+            set_vec3f("pointLights[0].phong.ambient", 0.03f, 0.03f, 0.03f);
+            set_vec3f("pointLights[0].phong.diffuse", 0.8f, 0.8f, 0.8f);
+            set_vec3f("pointLights[0].phong.specular", 1.0f, 1.0f, 1.0f);
 
-        float intensity = 0.1f;
-        set_vec3f("light.ambient", light_color.x * intensity, light_color.y * intensity, light_color.z * intensity);
-        set_vec3f("light.diffuse", light_color.x, light_color.y, light_color.z); // color of light
-        set_vec3f("light.specular", light_color.x, light_color.y, light_color.z);        
+            pos = pointlight_positions[1];
+            set_float("pointLights[1].power", 2.0f + 5.0f);
+            set_vec3f("pointLights[1].position", pos.x, pos.y, pos.z);
+            set_vec3f("pointLights[1].phong.ambient", 0.03f, 0.03f, 0.03f);
+            set_vec3f("pointLights[1].phong.diffuse", 0.8f, 0.8f, 0.8f);
+            set_vec3f("pointLights[1].phong.specular", 1.0f, 1.0f, 1.0f);            
+
+            pos = pointlight_positions[2];
+            set_float("pointLights[2].power", 4.0f + 5.0f);
+            set_vec3f("pointLights[2].position", pos.x, pos.y, pos.z);
+            set_vec3f("pointLights[2].phong.ambient", 0.03f, 0.03f, 0.03f);
+            set_vec3f("pointLights[2].phong.diffuse", 0.8f, 0.8f, 0.8f);
+            set_vec3f("pointLights[2].phong.specular", 1.0f, 1.0f, 1.0f);            
+
+            pos = pointlight_positions[3];
+            set_float("pointLights[3].power", 20.0f + 5.0f);
+            set_vec3f("pointLights[3].position", pos.x, pos.y, pos.z);
+            set_vec3f("pointLights[3].phong.ambient", 0.03f, 0.03f, 0.03f);
+            set_vec3f("pointLights[3].phong.diffuse", 0.8f, 0.8f, 0.8f);
+            set_vec3f("pointLights[3].phong.specular", 1.0f, 1.0f, 1.0f);            
+            
+        }
+        
+        // Set spotlight
+        
+        {
+
+            set_vec3f("spotlight.position", cam.position.x, cam.position.y, cam.position.z);
+            set_vec3f("spotlight.direction", cam.direction.x, cam.direction.y, cam.direction.z);            
+            set_float("spotlight.power", 15.0f);
+            set_float("spotlight.cutoff", (float)cos(RADIANS(15.0f)));
+            set_float("spotlight.outer_cutoff", (float)cos(RADIANS(18.0f)));
+
+            float intensity = 0.1f;
+            set_vec3f("spotlight.phong.ambient", 0.0f, 0.0f, 0.0f);
+            set_vec3f("spotlight.phong.diffuse", 1.0f, 1.0f, 1.0f); // color of light
+            set_vec3f("spotlight.phong.specular", 1.0f, 1.0f, 1.0f);        
+        }
         
         // Rotate in model space        
-        //init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
-        //rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);               
+               //init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
+               //rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);               
         
 #if 1
         for(unsigned int box_index = 0; box_index < 6; box_index++)
@@ -614,21 +662,28 @@ int main(void)
 #endif
         
         // Render light cube
-#if 0        
+#if 1       
         use_program_name("light");
         
-        init_diag_m4(model, 1.0f);        
-        scale_m4(model, 0.2f, 0.2f, 0.2f);       
-        translate_m4(model, &light_pos);
 
-        set_vec3f("light_color", light_color.x, light_color.y, light_color.z);
+        for(int i = 0; i < 4; i++)
+        {
+            vec3 pos = pointlight_positions[i];
+            
+            init_diag_m4(model, 1.0f);        
+            scale_m4(model, 3.0f, 0.2f, 0.2f);       
+            translate_m4(model, &pos);
+                       
+            set_vec3f("light_color", 1.0f, 1.0f, 1.0f);
+
+            set_mat4f("model", model);
+            set_mat4f("view", view);
+            set_mat4f("projection", projection);
         
-        set_mat4f("model", model);
-        set_mat4f("view", view);
-        set_mat4f("projection", projection);
-        
-        glBindVertexArray(light_VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+            glBindVertexArray(light_VAO);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+                       
 #endif
         
 #if 0        

@@ -13,8 +13,9 @@
 #define MAX_SHADER_PROGRAMS 64
 
 typedef struct {
+    
     /* Pointer to a 2D array where every row consists of a shader program */
-    unsigned char *paths[MAX_SHADER_PROGRAMS][2];
+    unsigned char* paths[MAX_SHADER_PROGRAMS][2];
     
     /* Timestamp on last modification of the shader file */
     time_t* mod;
