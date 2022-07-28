@@ -1,9 +1,3 @@
-/*
-
-  TODO: Handle GLSL shader compilation error, for init and reload
-
-*/
-
 #include "shader_bank.h"
 
 static const char* version_define = "#version 460 core\n";
@@ -17,8 +11,9 @@ static unsigned char* paths[MAX_SHADER_PROGRAMS][2] = {
   
 };
 
-#define SHADER_BUFFER_SIZE (10*1024)
+#define SHADER_BUFFER_SIZE (8*1024) // used as size for the heap allocation on shader_src
 #define SHADER_LOG_SIZE (1*1024)
+// #define DEBUG_PRINT_SOURCE
 
 /* Buffer for shader source code, used for compiling shaders */
 static unsigned char* shader_src;
@@ -48,7 +43,6 @@ bool init_shader_bank()
 {
     shaders.active_program_index = 0;
     shader_src = (unsigned char*)calloc(SHADER_BUFFER_SIZE, sizeof(unsigned char));
-    //shaders.paths = paths;
 
     /* TODO: Replace malloc/calloc with custom allocator */
     shaders.mod = (time_t*)calloc(ArrayCount(paths), sizeof(time_t)); // calloc inits everything to zero
@@ -62,7 +56,7 @@ bool init_shader_bank()
 
 bool reload_shader_bank()
 {
-    bool successful = true;
+    bool status = true;
 
     for(unsigned char idx = 0;
         idx < shaders.programs_count;
@@ -75,6 +69,7 @@ bool reload_shader_bank()
         if(!fp)
         {
             printf("Could not open shader file: %s\n", shader_path);
+            status = false;
             fclose(fp);            
             continue;
         }
@@ -105,6 +100,14 @@ bool reload_shader_bank()
         {
             printf("Could not evaluate file size for the shader: %s\n", shader_path);
             fclose(fp);
+            status = false;
+            continue;
+        }
+        else if (file_size > SHADER_BUFFER_SIZE)
+        {
+            printf("File size too big! File was %d bytes bigger than limit.\n", file_size - SHADER_BUFFER_SIZE);
+            fclose(fp);
+            status = false;
             continue;
         }
 
@@ -138,7 +141,11 @@ bool reload_shader_bank()
         {
             glGetShaderInfoLog(vertex_id, SHADER_LOG_SIZE, 0, shader_log);          
             printf("Vertex shader %s failed! Reason: %s\n", shader_path, shader_log);
+            
+#if DEBUG_PRINT_SOURCE
             printf("This is the code it tried to compile:\n%s\n", vertex_src[2]);
+#endif
+            
         }        
          
         /* Compile fragment shader */
@@ -153,7 +160,11 @@ bool reload_shader_bank()
         {
             glGetShaderInfoLog(fragment_id, SHADER_LOG_SIZE, 0, shader_log);            
             printf("Fragment shader %s failed! Reason: %s\n", shader_path, shader_log);
+            
+#if DEBUG_PRINT_SOURCE            
             printf("This is the code it tried to compile:\n%s\n", fragment_src[2]);
+#endif
+            
         }
 
         /* If one of them failed, don't even try to link them together */
@@ -161,7 +172,7 @@ bool reload_shader_bank()
         {            
             glDeleteShader(vertex_id);
             glDeleteShader(fragment_id);
-            successful = false;
+            status = false;
             continue;
         }
                 
@@ -189,7 +200,7 @@ bool reload_shader_bank()
      
     }
 	
-    return successful;    
+    return status;    
 }
 
 void use_program_name(unsigned char* program_name)

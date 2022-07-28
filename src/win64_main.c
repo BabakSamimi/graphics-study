@@ -83,8 +83,14 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	else if(!state.reloading_shaders && key == GLFW_KEY_R && action == GLFW_PRESS)
     {
         state.reloading_shaders = 1;
-        printf("R!\n");
-        reload_shader_bank();
+        
+        if(reload_shader_bank())
+        {
+            printf("Successfully reloaded shaders\n");
+        }
+        else
+            printf("Shader reloading failed\n");
+        
         state.reloading_shaders = 0;
     }
 }
@@ -352,18 +358,6 @@ int main(void)
         1, 2, 3    // second triangle
     };
 
-    float padding = 2.0f;
-    vec3 box_positions[6] = {
-        {0}, {-1.0f - padding, 0.0f, 0.0f}, {1.0f + padding, 0.0f, 0.0f},
-        {0.0f, 1.0f + padding, 0.0f},
-        {0.0f, 0.0f, -1.0f - padding}, {0.0f, 0.0f, 1.0f + padding}
-    };
-
-    vec3 pointlight_positions[4] = {
-        { 4.0f, 4.0f, 0.0f }, { -4.0f, 4.0f, 0.0f },
-        { 0.0f, 4.0f, 4.0f }, { 0.0f, 4.0f, -4.0f },        
-    };
-
     // Compile shaders
     register_shader("..\\src\\cube.glsl", "cube");
     register_shader("..\\src\\light.glsl", "light");
@@ -471,6 +465,33 @@ int main(void)
         
         init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 4.0f);        
     }
+
+    float padding = 2.0f;
+    vec3 box_positions[6] = {
+        {0}, {-1.0f - padding, 0.0f, 0.0f}, {1.0f + padding, 0.0f, 0.0f},
+        {0.0f, 1.0f + padding, 0.0f},
+        {0.0f, 0.0f, -1.0f - padding}, {0.0f, 0.0f, 1.0f + padding}
+    };
+
+    vec3 pointlight_positions[4][2] = {
+        {
+            { 4.0f, 4.0f, 0.0f },
+            { 1.0f, 1.0f, 0.0f }
+        },
+        {
+            { -4.0f, 4.0f, 0.0f },
+            { 1.0f, 0.0f, 0.0f }
+        },
+        {
+            { 0.0f, 4.0f, 4.0f },
+            { 0.0f, 1.0f, 0.0f }
+        },
+        {
+            { 0.0f, 4.0f, -4.0f },
+            { 0.0f, 0.0f, 1.0f }
+        },        
+    };
+
 
     vec3 light_pos, light_color;
     init_v3(&light_pos, 0.0f, 0.0f, 0.0f);
@@ -580,39 +601,43 @@ int main(void)
         {        
             set_vec3f("dir_light.direction", cam.direction.x, cam.direction.y, cam.direction.z);
             set_vec3f("dir_light.phong.ambient", 0.05f, 0.05f, 0.05f);
-            set_vec3f("dir_light.phong.diffuse", 0.3f, 0.3f, 0.3f);
+            set_vec3f("dir_light.phong.diffuse", 0.1f, 0.1f, 0.1f);
             set_vec3f("dir_light.phong.specular", 0.5f, 0.5f, 0.5f);
         }
         
         // Set pointlight
         {
-            vec3 pos = pointlight_positions[0];
-            set_float("pointLights[0].power", 5.0f);
+            vec3 pos = pointlight_positions[0][0];
+            vec3 colors = pointlight_positions[0][1];
+            set_float("pointLights[0].power", 20.0f);
             set_vec3f("pointLights[0].position", pos.x, pos.y, pos.z);
-            set_vec3f("pointLights[0].phong.ambient", 0.03f, 0.03f, 0.03f);
-            set_vec3f("pointLights[0].phong.diffuse", 0.8f, 0.8f, 0.8f);
-            set_vec3f("pointLights[0].phong.specular", 1.0f, 1.0f, 1.0f);
+            set_vec3f("pointLights[0].phong.ambient", 0.01*colors.x, 0.01*colors.y, 0.01*colors.z);
+            set_vec3f("pointLights[0].phong.diffuse", colors.x, colors.y, colors.z);
+            set_vec3f("pointLights[0].phong.specular", colors.x, colors.y, colors.z);
 
-            pos = pointlight_positions[1];
+            pos = pointlight_positions[1][0];
+            colors = pointlight_positions[1][1];
             set_float("pointLights[1].power", 2.0f + 5.0f);
             set_vec3f("pointLights[1].position", pos.x, pos.y, pos.z);
-            set_vec3f("pointLights[1].phong.ambient", 0.03f, 0.03f, 0.03f);
-            set_vec3f("pointLights[1].phong.diffuse", 0.8f, 0.8f, 0.8f);
-            set_vec3f("pointLights[1].phong.specular", 1.0f, 1.0f, 1.0f);            
-
-            pos = pointlight_positions[2];
+            set_vec3f("pointLights[1].phong.ambient", 0.01*colors.x, 0.01*colors.y, 0.01*colors.z);
+            set_vec3f("pointLights[1].phong.diffuse", colors.x, colors.y, colors.z);
+            set_vec3f("pointLights[1].phong.specular", colors.x, colors.y, colors.z);
+            
+            pos = pointlight_positions[2][0];
+            colors = pointlight_positions[2][1];
             set_float("pointLights[2].power", 4.0f + 5.0f);
             set_vec3f("pointLights[2].position", pos.x, pos.y, pos.z);
-            set_vec3f("pointLights[2].phong.ambient", 0.03f, 0.03f, 0.03f);
-            set_vec3f("pointLights[2].phong.diffuse", 0.8f, 0.8f, 0.8f);
-            set_vec3f("pointLights[2].phong.specular", 1.0f, 1.0f, 1.0f);            
+            set_vec3f("pointLights[2].phong.ambient", 0.01*colors.x, 0.01*colors.y, 0.01*colors.z);
+            set_vec3f("pointLights[2].phong.diffuse", colors.x, colors.y, colors.z);
+            set_vec3f("pointLights[2].phong.specular", colors.x, colors.y, colors.z);
 
-            pos = pointlight_positions[3];
+            pos = pointlight_positions[3][0];
+            colors = pointlight_positions[3][1];
             set_float("pointLights[3].power", 20.0f + 5.0f);
             set_vec3f("pointLights[3].position", pos.x, pos.y, pos.z);
-            set_vec3f("pointLights[3].phong.ambient", 0.03f, 0.03f, 0.03f);
-            set_vec3f("pointLights[3].phong.diffuse", 0.8f, 0.8f, 0.8f);
-            set_vec3f("pointLights[3].phong.specular", 1.0f, 1.0f, 1.0f);            
+            set_vec3f("pointLights[3].phong.ambient", 0.01*colors.x, 0.01*colors.y, 0.01*colors.z);
+            set_vec3f("pointLights[3].phong.diffuse", colors.x, colors.y, colors.z);
+            set_vec3f("pointLights[3].phong.specular", colors.x, colors.y, colors.z);
             
         }
         
@@ -661,20 +686,20 @@ int main(void)
         //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
 #endif
         
-        // Render light cube
+        // Render light cubes
 #if 1       
         use_program_name("light");
         
 
         for(int i = 0; i < 4; i++)
         {
-            vec3 pos = pointlight_positions[i];
-            
+            vec3 pos = pointlight_positions[i][0];
+            vec3 color = pointlight_positions[i][1];
+
             init_diag_m4(model, 1.0f);        
             scale_m4(model, 3.0f, 0.2f, 0.2f);       
             translate_m4(model, &pos);
-                       
-            set_vec3f("light_color", 1.0f, 1.0f, 1.0f);
+            set_vec3f("light_color", color.x, color.y, color.z);
 
             set_mat4f("model", model);
             set_mat4f("view", view);
@@ -682,7 +707,7 @@ int main(void)
         
             glBindVertexArray(light_VAO);
             glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
+        }    
                        
 #endif
         
