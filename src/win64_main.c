@@ -20,8 +20,14 @@ int window_height = 720;
 #define GFX_MATH_IMPL
 #include "gfx_math.h"
 
-#include "shader_bank.h"
-#include "camera.h"
+#include "renderer/renderer.h"
+#include "renderer/shader_bank.h"
+#include "renderer/camera.h"
+#include "renderer/vertex_buffer.h"
+#include "renderer/vertex_array.h"
+#include "renderer/cube.h"
+
+#include "memory.h"
 
 #define PRESSED(KEY) (glfwGetKey(window, KEY) == GLFW_PRESS)
 
@@ -51,12 +57,6 @@ extern ShaderBank shaders;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0,0, width, height);
-}
-
-void process_input(GLFWwindow* window)
-{
-
-
 }
 
 static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -162,54 +162,6 @@ unsigned int load_texture(char* path, int flipped)
   
 */
 
-char* gl_debug_source_strings[6] = {
-    "OpenGL API", "Window system", "Shader compiler",
-    "Third party", "Application", "Other",
-};
-
-char* gl_debug_type_strings[8] = {
-    "OpenGL API", "Deprecated behaviour", "Undefined behaviour",
-    "Portability", "Performance",
-    "Marker", "Push group", "Pop group",
-};
-
-char* gl_debug_severity_strings[4] = {
-    "High", "Medium", "Low", "Notification",
-};
-
-void APIENTRY gl_debug_output(GLenum source, GLenum type, GLuint id,
-                              GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
-{
-    
-    char* source_str = gl_debug_source_strings[(ArrayCount(gl_debug_source_strings) - ((GL_DEBUG_SOURCE_OTHER + 1) - source)) % ArrayCount(gl_debug_source_strings)];
-
-    // Two different branches because there's a gap,
-    // We can probably avoid branching if we find a better mathematical formula to index the strings
-    char* type_str;
-    if(type <= GL_DEBUG_TYPE_OTHER)
-    {
-        type_str = gl_debug_type_strings[(ArrayCount(gl_debug_type_strings)- 2 - ((GL_DEBUG_TYPE_OTHER + 1) - type)) % ArrayCount(gl_debug_type_strings)];
-    }
-    else
-    {
-        type_str = gl_debug_type_strings[(ArrayCount(gl_debug_type_strings) - 5 - ((GL_DEBUG_TYPE_POP_GROUP + 1) - type)) % ArrayCount(gl_debug_type_strings)];
-    }
-
-    char* severity_str;
-    if(severity == GL_DEBUG_SEVERITY_NOTIFICATION)
-    {
-        severity_str = gl_debug_severity_strings[3];
-    }
-    else
-    {
-        severity_str = gl_debug_severity_strings[(ArrayCount(gl_debug_severity_strings) - ((GL_DEBUG_SEVERITY_LOW + 1) - severity)) % ArrayCount(gl_debug_severity_strings)];        
-    }
-
-    
-    printf("[OpenGL] (%d) [Source: %s] [Type: %s] [Severity: %s]:\n %s\n\n", id, source_str, type_str, severity_str, message);
-    
-}
-
 int main(void)
 {
     GLFWwindow* window;
@@ -241,15 +193,9 @@ int main(void)
     }
 
     // Make the window's context current
-    glfwMakeContextCurrent(window);        
-	gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
-	
-	glViewport(0,0, window_width, window_height);
-    glEnable(GL_DEPTH_TEST);
+    glfwMakeContextCurrent(window);
     
-    // glEnable(GL_BLEND);
-    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
+	gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);	    
     glfwSwapInterval(1);
 	
 	// Register GLFW callbacks
@@ -258,85 +204,15 @@ int main(void)
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+    RenderInit(window_width, window_height);
+
     // Print status
     {            
         printf("Vendor: %s, %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER));
         int major_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MAJOR);
         int minor_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR);
-        printf("OpenGL version %d.%d\n", major_ver, minor_ver);
-
-#if DEBUG   
-        int flags;
-        glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-        if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
-        {
-            printf("Successfully created an OpenGL debug context.\n");
-            glEnable(GL_DEBUG_OUTPUT);
-            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-            glDebugMessageCallback(gl_debug_output, 0);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE);
-        }
-#endif
-        
-    }    
-
-    // Vertex Buffer
-#if 0     
-    float vertices[] = {
-        // positions        // colors        // texture coordinates
-        0.5f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f,  1.0f, 1.0f,   // top right
-        0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,  1.0f, 0.0f,   // bottom right
-        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,  0.0f, 0.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f, 1.0f,  // top left 
-    };
-#endif
-    
-
-    // Cube with vertices, normals and texture coordinates
-    float vertices[] = {
-        // positions            // normals              // texture coords
-        -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,  	0.0f,  0.0f,
-        0.5f, -0.5f, -0.5f,     0.0f,  0.0f, -1.0f,  	1.0f,  0.0f,
-        0.5f,  0.5f, -0.5f,     0.0f,  0.0f, -1.0f,  	1.0f,  1.0f,
-        0.5f,  0.5f, -0.5f,     0.0f,  0.0f, -1.0f,  	1.0f,  1.0f,
-        -0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,  	0.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,  	0.0f,  0.0f,
-
-        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,  	0.0f,  0.0f,
-        0.5f, -0.5f,  0.5f,     0.0f,  0.0f,  1.0f,  	1.0f,  0.0f,
-        0.5f,  0.5f,  0.5f,  	0.0f,  0.0f,  1.0f,  	1.0f,  1.0f,
-        0.5f,  0.5f,  0.5f,  	0.0f,  0.0f,  1.0f,  	1.0f,  1.0f,
-        -0.5f,  0.5f,  0.5f,  	0.0f,  0.0f,  1.0f,  	0.0f,  1.0f,
-        -0.5f, -0.5f,  0.5f,  	0.0f,  0.0f,  1.0f,  	0.0f,  0.0f,
-
-        -0.5f,  0.5f,  0.5f, 	-1.0f,  0.0f,  0.0f,  	1.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f, 	-1.0f,  0.0f,  0.0f,  	1.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f, 	-1.0f,  0.0f,  0.0f,  	0.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f, 	-1.0f,  0.0f,  0.0f,  	0.0f,  1.0f,
-        -0.5f, -0.5f,  0.5f, 	-1.0f,  0.0f,  0.0f,  	0.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f, 	-1.0f,  0.0f,  0.0f,  	1.0f,  0.0f,
-
-        0.5f,  0.5f,  0.5f,  	1.0f,  0.0f,  0.0f,  	1.0f,  0.0f,
-        0.5f,  0.5f, -0.5f,  	1.0f,  0.0f,  0.0f,  	1.0f,  1.0f,
-        0.5f, -0.5f, -0.5f,  	1.0f,  0.0f,  0.0f,  	0.0f,  1.0f,
-        0.5f, -0.5f, -0.5f,  	1.0f,  0.0f,  0.0f,  	0.0f,  1.0f,
-        0.5f, -0.5f,  0.5f,  	1.0f,  0.0f,  0.0f,  	0.0f,  0.0f,
-        0.5f,  0.5f,  0.5f,  	1.0f,  0.0f,  0.0f,  	1.0f,  0.0f,
-
-        -0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,  	0.0f,  1.0f,
-        0.5f, -0.5f, -0.5f,  	0.0f, -1.0f,  0.0f,  	1.0f,  1.0f,
-        0.5f, -0.5f,  0.5f,  	0.0f, -1.0f,  0.0f,  	1.0f,  0.0f,
-        0.5f, -0.5f,  0.5f,  	0.0f, -1.0f,  0.0f,  	1.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f,  	0.0f, -1.0f,  0.0f,  	0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f,  	0.0f, -1.0f,  0.0f,  	0.0f,  1.0f,
-
-        -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,  0.0f,  1.0f,
-        0.5f,  0.5f, -0.5f,  	0.0f,  1.0f,  0.0f,  1.0f,  1.0f,
-        0.5f,  0.5f,  0.5f,  	0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
-        0.5f,  0.5f,  0.5f,  	0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f,  	0.0f,  1.0f,  0.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f,  	0.0f,  1.0f,  0.0f,  0.0f,  1.0f
-    };
+        printf("OpenGL version %d.%d\n", major_ver, minor_ver);        
+    }        
 
     // unit square, first quadrant of NDC
     float quad_vert[] = {
@@ -359,51 +235,55 @@ int main(void)
     };
 
     // Compile shaders
-    register_shader("..\\src\\cube.glsl", "cube");
-    register_shader("..\\src\\light.glsl", "light");
-    register_shader("..\\src\\ui.glsl", "ui");
+    register_shader("..\\src\\shaders\\cube.glsl", "cube");
+    register_shader("..\\src\\shaders\\light.glsl", "light");
+    register_shader("..\\src\\shaders\\ui.glsl", "ui");
     
     if(!init_shader_bank())
     {
         printf("Failed init of shader bank!\n");
         exit(0);
     }
-    
-    // Create a VAO to store the layout of our attributes
-    unsigned int VBO, VAO, EBO, texture0, texture1;
-    unsigned int light_VAO;
-    unsigned int ui_VAO, ui_VBO, ui_EBO;
-    
-    // Setup VAO
-    glGenVertexArrays(1, &VAO);    
-    glBindVertexArray(VAO);
 
-    // Setup VBO
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    
-    // Setup vertex attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);    
-    
-    glBindVertexArray(0);
+    MemoryRegion region1;
+    InitRegion(&region1, malloc(MB(1)), MB(1));
 
+    VertexBuffer cube_vb = GenVertBuf(vertices, sizeof(vertices));
+
+    // Our primary VA for cube rendering with phong lightning
+    VertexArray va = GenVertArr();        
+    VertexLayout va_layout = {0};
+    
+    va_layout.attributes = (VertexAttribute*)SliceRegion16(&region1, 3 * sizeof(VertexAttribute));
+    
+    VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE);
+    VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE);
+    VertLayoutPush(&va_layout, 2, GL_FLOAT, GL_FALSE);
+
+    BindVertArr(va);               
+    BindVertBuf(cube_vb);
+    VABindLayout(&va, va_layout);
+    
+    UnbindVertArr();
+    UnbindVertBuf();
+    
     // Setup light cube
-    glGenVertexArrays(1, &light_VAO);    
-    glBindVertexArray(light_VAO);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, VBO); // re-use the same VBO
-    
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    
-    glBindVertexArray(0);
+    VertexArray light_va = GenVertArr();    
+    VertexLayout light_layout = {0};
 
+    
+    //light_layout.attributes = (VertexAttribute*)SliceRegion16(&region1, 1 * sizeof(VertexAttribute));
+    
+    //VertLayoutPush(&light_layout, 3, GL_FLOAT, GL_FALSE);
+    
+    BindVertArr(light_va);    
+    BindVertBuf(cube_vb);
+    VABindLayout(&light_va, va_layout);    
+
+    UnbindVertArr();
+    UnbindVertBuf();
+
+#if 0
     // UI 
     glGenVertexArrays(1, &ui_VAO);
     glBindVertexArray(ui_VAO);
@@ -421,7 +301,8 @@ int main(void)
     glBindVertexArray(0);    
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);      
-    
+
+#endif
     
     /* Setup EBO
     glGenBuffers(1, &EBO);
@@ -672,7 +553,7 @@ int main(void)
             
             set_mat4f("model", model);
             
-            glBindVertexArray(VAO);               
+            BindVertArr(va);
             glDrawArrays(GL_TRIANGLES, 0, 36);
             
         }
@@ -681,7 +562,7 @@ int main(void)
         set_mat4f("model", model);
         
         /* Draw cube */
-        glBindVertexArray(VAO);                       
+        BindVertArr(va);                       
         glDrawArrays(GL_TRIANGLES, 0, 36);
         //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
 #endif
@@ -705,7 +586,7 @@ int main(void)
             set_mat4f("view", view);
             set_mat4f("projection", projection);
         
-            glBindVertexArray(light_VAO);
+            BindVertArr(light_va);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }    
                        

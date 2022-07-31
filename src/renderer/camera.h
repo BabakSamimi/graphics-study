@@ -1,6 +1,6 @@
 #ifndef CAMERA_H
 #define CAMERA_H
-#include "gfx_math.h"
+#include "../gfx_math.h"
 
 
 typedef enum
