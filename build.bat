@@ -1,9 +1,8 @@
 @echo off
 
 SET ROOT=%cd%
-SET VENDOR_PATH=vendors
 
-SET INCLUDES=/I %ROOT%\vendors\GLFW\include /I %ROOT%\vendors\glad\include
+SET INCLUDES=/I %ROOT%\vendors /I %ROOT%\vendors\GLFW\include /I %ROOT%\vendors\glad\include
 
 SET FLAGS=-DPERF=0 -DDEBUG=1
 

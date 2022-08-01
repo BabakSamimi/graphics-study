@@ -15,7 +15,7 @@ int window_height = 720;
 
 // app code
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "stb/stb_image.h"
 
 #define GFX_MATH_IMPL
 #include "gfx_math.h"
@@ -146,21 +146,6 @@ unsigned int load_texture(char* path, int flipped)
     return texture;
 }
 
-/*
-  length:
-      is the length of the message excluding null-terminator
-  
-  source, type and severity:
-      are the message's enumerators
-  
-  id:
-      is the message's identifier
-  
-  userParam:
-      is for storing custom data by passing in a struct, this is done via glDebugMessageCallback(...)
-  
-  
-*/
 
 int main(void)
 {
@@ -183,7 +168,7 @@ int main(void)
 #endif
     
     // Create a window and its OpenGL context
-    window = glfwCreateWindow(window_width, window_height, "learnopengl", NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, "graphics!", NULL, NULL);
 	
 	if (!window)
     {
@@ -356,8 +341,8 @@ int main(void)
 
     vec3 pointlight_positions[4][2] = {
         {
-            { 4.0f, 4.0f, 0.0f },
-            { 1.0f, 1.0f, 0.0f }
+            { 4.0f, 4.0f, 0.0f }, // pos
+            { 1.0f, 1.0f, 0.0f }  // color
         },
         {
             { -4.0f, 4.0f, 0.0f },

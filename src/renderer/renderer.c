@@ -3,6 +3,8 @@
 #include "vertex_buffer.h"
 #include "index_buffer.h"
 
+
+// @REWORK: Use switch cases instead of this?
 static char* gl_debug_source_strings[6] = {
     "OpenGL API", "Window system", "Shader compiler",
     "Third party", "Application", "Other",
@@ -18,14 +20,28 @@ static char* gl_debug_severity_strings[4] = {
     "High", "Medium", "Low", "Notification",
 };
 
+/*
+  length:
+      is the length of the message excluding null-terminator
+  
+  source, type and severity:
+      are the message's enumerators
+  
+  id:
+      is the message's identifier
+  
+  userParam:
+      is for storing custom data by passing in a struct, this is done via glDebugMessageCallback(...)
+*/
+
 static void APIENTRY gl_debug_output(GLenum source, GLenum type, GLuint id,
                               GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
     
     char* source_str = gl_debug_source_strings[(ArrayCount(gl_debug_source_strings) - ((GL_DEBUG_SOURCE_OTHER + 1) - source)) % ArrayCount(gl_debug_source_strings)];
 
-    // Two different branches because there's a gap,
-    // We can probably avoid branching if we find a better mathematical formula to index the strings
+
+    // @REWORK: Have to redo this and just use simple switches
     char* type_str;
     if(type <= GL_DEBUG_TYPE_OTHER)
     {
