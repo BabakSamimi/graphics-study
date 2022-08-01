@@ -15,6 +15,6 @@ IF NOT EXIST bin mkdir bin
 pushd bin
 
 REM del *.pdb > NUL 2> NUL
-cl %ROOT%\src\*.c %COMPILER_FLAGS% /link %LINKER_FLAGS%
+cl %ROOT%\src\*.c %ROOT%\src\renderer\*.c %COMPILER_FLAGS% /link %LINKER_FLAGS%
 
 popd
