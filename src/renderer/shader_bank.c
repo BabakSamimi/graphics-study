@@ -1,22 +1,20 @@
+#include <sys/stat.h> // stat
+#include <string.h> // memset, strlen, strcmp
+
 #include "shader_bank.h"
+#include "..\memory.h"
 
 static const char* version_define = "#version 460 core\n";
 static const char* vertex_define = "#define VERTEX_SHADER\n";
 static const char* fragment_define = "#define FRAGMENT_SHADER\n";
 
-static unsigned char* paths[MAX_SHADER_PROGRAMS][2] = {
-    { "..\\src\\cube.glsl", "cube" },
-    { "..\\src\\light.glsl", "light" },
-    { "..\\src\\ui.glsl", "ui" }, 
-  
-};
-
-#define SHADER_BUFFER_SIZE (8*1024) // used as size for the heap allocation on shader_src
+#define SHADER_BUFFER_SIZE (8*1024)
 #define SHADER_LOG_SIZE (1*1024)
 // #define DEBUG_PRINT_SOURCE
 
 /* Buffer for shader source code, used for compiling shaders */
 static unsigned char* shader_src;
+static MemoryRegion mem_reg;
 
 ShaderBank shaders = {0};
 
@@ -41,13 +39,12 @@ void register_shader(char* path, char* name)
 
 bool init_shader_bank()
 {
-    shaders.active_program_index = 0;
-    shader_src = (unsigned char*)calloc(SHADER_BUFFER_SIZE, sizeof(unsigned char));
+    InitRegion(&mem_reg, ALLOC_MEM(10*KB(64)), 10*KB(64));
 
-    /* TODO: Replace malloc/calloc with custom allocator */
-    shaders.mod = (time_t*)calloc(ArrayCount(paths), sizeof(time_t)); // calloc inits everything to zero
-    //shaders.programs_count = ArrayCount(paths);
-    shaders.programs = (unsigned int*)calloc(shaders.programs_count, sizeof(unsigned int));    
+    shader_src = (unsigned char*)       SliceRegion16(&mem_reg, SHADER_BUFFER_SIZE * sizeof(unsigned char));
+    shaders.mod = (time_t*)             SliceRegion16(&mem_reg, shaders.programs_count * sizeof(time_t));
+    shaders.programs = (unsigned int*)  SliceRegion16(&mem_reg, shaders.programs_count * sizeof(unsigned int));
+    shaders.active_program_index = 0;
     
     // Populate shader bank
     return reload_shader_bank();

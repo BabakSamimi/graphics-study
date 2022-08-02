@@ -2,9 +2,6 @@
 #define SHADER_BANK_H
 #include <time.h> // timespec
 #include <stdio.h> // FILE
-#include <sys/stat.h> // stat
-#include <string.h> // memset, strlen, strcmp
-#include <stdlib.h> // calloc
 #include <stdbool.h>
 
 #include "glad/glad.h"
@@ -14,7 +11,7 @@
 
 typedef struct {
     
-    /* Pointer to a 2D array where every row consists of a shader program */
+    /* Pointer to a 2D array where every row consists of a shader program (a path and its name) */
     unsigned char* paths[MAX_SHADER_PROGRAMS][2];
     
     /* Timestamp on last modification of the shader file */

@@ -231,7 +231,7 @@ int main(void)
     }
 
     MemoryRegion region1;
-    InitRegion(&region1, malloc(MB(1)), MB(1));
+    InitRegion(&region1, ALLOC_MEM(MB(1)), MB(1));
 
     VertexBuffer cube_vb = GenVertBuf(vertices, sizeof(vertices));
 

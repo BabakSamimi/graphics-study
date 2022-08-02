@@ -1,6 +1,14 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+// If we ever need to call into platform specific memory allocators
+#ifndef ALLOC_MEM
+
+#include <stdlib.h>
+#define ALLOC_MEM(x) malloc(x)
+
+#endif
+
 #define KB(x) ((x)*1024)
 #define MB(x) ((x)*KB(1024))
 #define GB(x) ((x)*MB(1024))

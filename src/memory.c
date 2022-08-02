@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include <assert.h>
+#include <memory.h> // memset
+
 #include "memory.h"
 
 /*
@@ -8,6 +10,8 @@
   Permament: Freed at the end of the program
   Transient: Cycle-based lifetime
   Scratch: Very short-lived
+
+  TODO: Implement these purpose-specific memory types
   
 */
 
@@ -17,6 +21,8 @@ void InitRegion(MemoryRegion *region, void* backing_buffer, size_t size)
     region->buffer = (unsigned char*) backing_buffer;
     region->buffer_size = size;
     region->used = 0;
+
+    memset(region->buffer, 0, region->buffer_size);
     
 }
 
