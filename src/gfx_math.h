@@ -6,7 +6,10 @@
 #ifndef GFX_MATH_H
 #define GFX_MATH_H
 #pragma warning(disable:4201)
-
+/*
+  TODO:
+  * Handle float comparions?
+*/
 #define PI 3.14159265359f
 #define DEG_TO_RAD(D) ((D)*0.0174532925f)
 #define RAD_TO_DEG(R) ((R)*57.2957795f)
@@ -14,98 +17,110 @@
 #define DEGREES(R)    RAD_TO_DEG((R))
 #define SQUARE(X)     ((X)*(X))
 
-typedef union { struct { float x,y; }; struct { float u,v; }; } vec2;
+typedef union { struct { float x,y; }; struct { float u,v; }; struct { float width, height; };} vec2;
 typedef union { struct { float x,y,z; }; struct { float r,g,b; }; } vec3;
 typedef union { struct { float x,y,z,w; }; struct { float r,g,b,a; }; } vec4;
+
 /*  Column-major */
-typedef float mat3[9];
-typedef float mat4[16];
+typedef struct {
+    float matrix[9];
+} mat3x3;
 
-/*
-  Note: mat4 is a typedef'd float[16], usage would be the same:
+typedef struct {
+    float matrix[16];
+} mat4x4;
 
-  mat4 transformation = {0};
-  transformation[0] = 1.0f;
-  etc.
+//----------------------
+// VEC2
+//----------------------
+vec2 create_vec2    (float x, float y);
+vec2 copy_vec2      (vec2 target);
 
-  When passing into functions, these are equivalent:
-  float a[16];
-  mat4 b;
-  init_m4(a, 1.0f);
-  init_m4(b, 1.0f);
-  
-*/
+vec2 add_vec2       (vec2 a, vec2 b);
+vec2 sub_vec2       (vec2 a, vec2 b);
+vec2 negate_vec2    (vec2 a);
+vec2 scale_vec2     (vec2 a, float scalar);
+vec2 normalize_vec2 (vec2 a);
 
-void init_v2(vec2* out, float x, float y);
-void copy_v2(vec2* out, vec2* target);
-int compare_v2(vec2* target, vec2* source);
-void add_v2(vec2* out, vec2* a, vec2* b);
-void sub_v2(vec2* out, vec2* a, vec2* b);
-void scale_v2(vec2* out, float scalar);
-float dot_v2(vec2* a, vec2* b);
-float length_v2(vec2* a);
-void normalize_v2(vec2* a);
+float dot_vec2        (vec2 a, vec2 b);
+float length_vec2     (vec2 a);
+int compare_vec2      (vec2 target, vec2 source);
 
-void init_v3(vec3* out, float x, float y, float z);
-void copy_v3(vec3* out, vec3* target);
-int compare_v3(vec3* target, vec3* source);
-void add_v3(vec3* out, vec3* a, vec3* b);
-void sub_v3(vec3* out, vec3* a, vec3* b);
-void negate_v3(vec3* a);
-void scale_v3(vec3* out, float scalar);
-float dot_v3(vec3* a, vec3* b);
-void cross_v3(vec3* out, vec3* a, vec3* b);
-float length_v3(vec3* a);
-void normalize_v3(vec3* a);
+//----------------------
+// VEC3
+//----------------------
+vec3 create_vec3    (float x, float y, float z);
+vec3 copy_vec3      (vec3 target);
 
-void init_v4(vec4* out, float x, float y, float z, float w);
-void copy_v4(vec4* out, vec4* target);
-int compare_v4(vec4* target, vec4* source);
-void add_v4(vec4* out, vec4* a, vec4* b);
-void sub_v4(vec4* out, vec4* a, vec4* b);
-void scale_v4(vec4* out, float scalar);
-float dot_v4(vec4* a, vec4* b);
-float length_v4(vec4* a);
-void normalize_v4(vec4* a);
+vec3 add_vec3       (vec3 a, vec3 b);
+vec3 sub_vec3       (vec3 a, vec3 b);
+vec3 negate_vec3    (vec3 a);
+vec3 scale_vec3     (vec3 a, float scalar);
+vec3 normalize_vec3 (vec3 a);
+vec3 cross_vec3     (vec3 a, vec3 b);
 
-/*
-  3x3 MATRIX FUNCTIONS
-*/
+float dot_vec3      (vec3 a, vec3 b);
+float length_vec3   (vec3 a);
+int compare_vec3    (vec3 a, vec3 b);
 
-void init_m3(mat3 out, float scalar);
-void init_diag_m3(mat3 out, float scalar);
-void copy_m3(mat3 out, mat3 target);
-void mult_m3(mat3 out, mat3 a, mat3 b);
-void scale_m3(mat3 out, float x, float y); /* Last row untouched */
-void uniform_scale_m3(mat3 out, float scalar);
+//----------------------
+// VEC4
+//----------------------
+vec4 init_vec4      (float x, float y, float z, float w);
+vec4 copy_vec4      (vec4 a);
 
-/* Non-uniform scaling */
-void scale_x_m3(mat3 source, float scalar);
-void scale_y_m3(mat3 source, float scalar);
-void scale_z_m3(mat3 source, float scalar);
+vec4 add_vec4       (vec4 a, vec4 b);
+vec4 sub_vec4       (vec4 a, vec4 b);
+vec4 scale_vec4     (vec4 a, float scalar);
+vec4 normalize_vec4 (vec4 a);
 
-/* Transforms */
-void m3_mult_v3(vec3* out, mat3 mat, vec3* v);
-void translate_m3(mat3 out, vec2* vec);
+float dot_vec4      (vec4 a, vec4 b);
+float length_vec4   (vec4 a);
+int compare_vec4    (vec4 a, vec4 b);
 
-/*
-  4x4 MATRIX FUNCTIONS
-*/
+//----------------------
+// MAT3X3
+//----------------------
+mat3x3 create_mat3x3        (float scalar);
+mat3x3 create_diag_mat3x3   (float scalar);
+mat3x3 copy_mat3x3          (mat3x3 a);
+mat3x3 mult_mat3x3          (mat3x3 a, mat3x3 b);
+mat3x3 scale_mat3x3         (mat3x3 a, float x, float y); // Last row untouched
+mat3x3 uniform_scale_mat3x3 (mat3x3 a, float scalar);
 
-void init_m4(mat4 out, float scalar);
-void init_diag_m4(mat4 out, float scalar);
-void copy_m4(mat4 out, mat4 target);
-void mult_m4(mat4 out, mat4 a, mat4 b);
-void scale_m4(mat4 out, float x, float y, float z); /* Last row untouched */
-void uniform_scale_m4(mat4 out, float scalar);
-void m4_mult_v4(vec4* out, mat4 mat, vec4* v);
+// Transforms
+vec3 mat3x3_mult_vec3         (mat3x3 mat, vec3 v);
+mat3x3 translate_mat3x3       (mat3x3 a, vec2 vec);
 
-/* Transforms */
-void translate_m4(mat4 out, vec3* vec);
+//----------------------
+// MAT4X4
+//----------------------
+mat4x4 create_mat4x4        (float scalar);
+mat4x4 create_diag_mat4x4   (float scalar);
+mat4x4 copy_mat4x4          (mat4x4 target);
+mat4x4 mult_mat4x4          (mat4x4 a, mat4x4 b);
+mat4x4 scale_mat4x4         (mat4x4 a, float x, float y, float z); // Last row untouched
 
-/* Supply a rotation matrix an angle theta and then multiply it with the input matrix */
+// Transforms
+vec4 mat4x4_mult_vec4(mat4x4 mat, vec4 v);
+mat4x4 translate_mat4x4(mat4x4 out, vec3 vec);
 
-void rotate_m4(mat4 out, float theta, vec3* axis);
+// Supply a rotation matrix an angle theta and then multiply it with the input matrix
+mat4x4 rotate_mat4x4(mat4x4 out, float theta, vec3 axis); // Should we modify the parameter or return a new matrix?
+
+
+//----------------------
+// MISC. FUNCTIONS
+//----------------------
+mat4x4 frustum(float l,float r, float t, float b,
+               float n, float f);
+
+mat4x4 ortho(float l, float r, float b, float t,
+             float n, float f);
+mat4x4 perspective(float fov, float aspect,
+                   float n, float f);
+
+mat4x4 look_at(vec3 cam_pos, vec3 at, vec3 up);
 
 #endif
 
@@ -115,483 +130,560 @@ void rotate_m4(mat4 out, float theta, vec3* axis);
 #include <math.h>
 #define SQRT_F(N) (float)sqrt(N)
 
-
-/*
-  
-  VECTOR 2
-  
-*/
-void init_v2(vec2* out, float x, float y)
+//----------------------
+// VEC2
+//----------------------
+vec2 create_vec2(float x, float y)
 {
-    out->x = x;
-    out->y = y;
+    vec2 result;
+    result.x = x;
+    result.y = y;
+    
+    return result;
 }
 
-void copy_v2(vec2* a, vec2* out)
+vec2 copy_vec2(vec2 a)
 {
-    out->x = a->x;
-    out->y = a->y;
+    vec2 result;
+    result.x = a.x;
+    result.y = a.y;
+    
+    return result;
 }
 
-int is_same_v2(vec2* a, vec2* b)
+vec2 add_vec2(vec2 a, vec2 b)
+{
+    vec2 result;
+    result.x = a.x + b.x;
+    result.y = a.y + b.y;
+
+    return result;
+}
+
+vec2 sub_vec2(vec2 a, vec2 b)
+{
+    vec2 result;
+    result.x = a.x - b.x;
+    result.y = a.y - b.y;
+
+    return result;
+}
+
+
+vec2 negate_vec2(vec2 a)
+{
+    vec2 result;
+    result.x = -a.x;
+    result.y = -a.y;
+
+    return result;
+}
+
+vec2 scale_vec2(vec2 a, float scalar)
+{
+    vec2 result;
+    result.x = a.x * scalar;
+    result.y = a.y * scalar;
+
+    return result;
+}
+
+vec2 normalize_vec2(vec2 a)
+{
+    vec2 result;
+    
+    float length = length_vec2(a);
+    
+    result.x = a.x / length;
+    result.y = a.y / length;
+    
+    return result;
+}
+
+float dot_vec2(vec2 a, vec2 b)
+{
+    return (a.x * b.x) + (a.y * b.y);
+}
+
+float length_vec2(vec2 a)
+{
+    return SQRT_F(SQUARE(a.x) + SQUARE(a.y));
+}
+
+int compare_vec2(vec2 a, vec2 b)
 {
     return (
-        (a->x == b->x)
-        && (a->y == b->y));
+        (a.x == b.x)
+        && (a.y == b.y));
 }
 
-void add_v2(vec2* out, vec2* a, vec2* b)
+
+//----------------------
+// VEC3
+//----------------------
+vec3 create_vec3(float x, float y, float z)
 {
-    out->x = a->x + b->x;
-    out->y = a->y + b->y;
+    vec3 result;
+    
+    result.x = x;
+    result.y = y;
+    result.z = z;
+
+    return result;
 }
 
-void sub_v2(vec2* out, vec2* a, vec2* b)
+vec3 copy_vec3(vec3 a)
 {
-    out->x = a->x - b->x;
-    out->y = a->y - b->y;
+    vec3 result;
+    
+    result.x = a.x;
+    result.y = a.y;
+    result.z = a.z;
+
+    return result;
 }
 
-void scale_v2(vec2* a, float scalar)
+vec3 add_vec3(vec3 a, vec3 b)
 {
-    a->x *= scalar;
-    a->y *= scalar;
+    vec3 result;
+    
+    result.x = a.x + b.x;
+    result.y = a.y + b.y;
+    result.z = a.z + b.z;
+
+    return result;
 }
 
-float dot_v2(vec2* a, vec2* b)
+vec3 sub_vec3(vec3 a, vec3 b)
 {
-    return (a->x * b->x) + (a->y * b->y);
+    vec3 result;
+    
+    result.x = a.x - b.x;
+    result.y = a.y - b.y;
+    result.z = a.z - b.z;
+    
+    return result;
 }
 
-float length_v2(vec2* a)
+vec3 negate_vec3(vec3 a)
 {
-    return SQRT_F((a->x * a->x) + (a->y * a->y));
+    vec3 result;
+    
+    result.x = -a.x;
+    result.y = -a.y;
+    result.z = -a.z;
+
+    return result;
 }
 
-void normalize_v2(vec2* a)
+vec3 scale_vec3(vec3 a, float scalar)
 {
-    float length = length_v2(a);
-    a->x /= length;
-    a->y /= length;
+    vec3 result;
+    
+    result.x = a.x * scalar;
+    result.y = a.y * scalar;
+    result.z = a.z * scalar;
+
+    return result;
 }
 
-/*
-  
-  VECTOR 3
-  
-*/
-
-void init_v3(vec3* out, float x, float y, float z)
+vec3 normalize_vec3(vec3 a)
 {
-    out->x = x;
-    out->y = y;
-    out->z = z;
+    vec3 result;
+    
+    float length = length_vec3(a);
+    
+    result.x = a.x / length;
+    result.y = a.y / length;
+    result.z = a.z / length;
+
+    return result;
 }
 
-void copy_v3(vec3* out, vec3* a)
+vec3 cross_vec3(vec3 a, vec3 b)
 {
-    out->x = a->x;
-    out->y = a->y;
-    out->z = a->z;
+    vec3 result;
+    
+    result.x = (a.y * b.z) - (a.z * b.y);
+    result.y = (a.z * b.x) - (a.x * b.z);
+    result.z = (a.x * b.y) - (a.y * b.x);
+
+    return result;
 }
 
-int is_same_v3(vec3* a, vec3* b)
+float dot_vec3(vec3 a, vec3 b)
 {
-    return (
-        (a->x == b->x)
-        && (a->y == b->y)
-        && (a->z == b->z));
+    return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
 }
 
-void add_v3(vec3* out, vec3* a, vec3* b)
+float length_vec3(vec3 a)
 {
-    out->x = a->x + b->x;
-    out->y = a->y + b->y;
-    out->z = a->z + b->z;
+    return SQRT_F(SQUARE(a.x) + SQUARE(a.y) + SQUARE(a.z));
 }
 
-void sub_v3(vec3* out, vec3* a, vec3* b)
-{
-    out->x = a->x - b->x;
-    out->y = a->y - b->y;
-    out->z = a->z - b->z;
-}
-
-void negate_v3(vec3* a)
-{
-    a->x = -a->x;
-    a->y = -a->y;
-    a->z = -a->z;    
-}
-
-void scale_v3(vec3* a, float scalar)
-{
-    a->x *= scalar;
-    a->y *= scalar;
-    a->z *= scalar;
-}
-
-float dot_v3(vec3* a, vec3* b)
-{
-    return (a->x * b->x) + (a->y * b->y) + (a->z * b->z);
-}
-
-void cross_v3(vec3* out, vec3* a, vec3* b)
-{
-    out->x = a->y*b->z - a->z*b->y;
-    out->y = a->z*b->x - a->x*b->z;
-    out->z = a->x*b->y - a->y*b->x;    
-}
-
-float length_v3(vec3* a)
-{
-    return SQRT_F((a->x * a->x) + (a->y * a->y) + (a->z * a->z));
-}
-
-void normalize_v3(vec3* a)
-{
-    float length = length_v3(a);
-    a->x /= length;
-    a->y /= length;
-    a->z /= length;    
-}
-
-/*
-  
-  VECTOR 4
-  
-*/
-
-void init_v4(vec4* out, float x, float y, float z, float w)
-{
-    out->x = x;
-    out->y = y;
-    out->z = z;
-    out->w = w;
-}
-
-void copy_v4(vec4* out, vec4* a)
-{
-    out->x = a->x;
-    out->y = a->y;
-    out->z = a->z;
-    out->w = a->w;    
-}
-
-int is_same_v4(vec4* a, vec4* b)
+int compare_vec3(vec3 a, vec3 b)
 {
     return (
-        (a->x == b->x)
-        && (a->y == b->y)
-        && (a->z == b->z)
-        && (a->w == b->w));
+        (a.x == b.x)
+        && (a.y == b.y)
+        && (a.z == b.z));
 }
 
-void add_v4(vec4* out, vec4* a, vec4* b)
+//----------------------
+// VEC4
+//----------------------
+vec4 init_vec4(float x, float y, float z, float w)
 {
-    out->x = a->x + b->x;
-    out->y = a->y + b->y;
-    out->z = a->z + b->z;
-    out->w = a->w + b->w;    
+    vec4 result;
+    result.x = x;
+    result.y = y;
+    result.z = z;
+    result.w = w;
+
+    return result;
 }
 
-void sub_v4(vec4* out, vec4* a, vec4* b)
+vec4 copy_vec4(vec4 a)
 {
-    out->x = a->x - b->x;
-    out->y = a->y - b->y;
-    out->z = a->z - b->z;
-    out->w = a->w - b->w;    
+    vec4 result;
+    result.x = a.x;
+    result.y = a.y;
+    result.z = a.z;
+    result.w = a.w;
+
+    return result;
 }
 
-void scale_v4(vec4* a, float scalar)
+vec4 add_vec4(vec4 a, vec4 b)
 {
-    a->x *= scalar;
-    a->y *= scalar;
-    a->z *= scalar;
-    a->w *= scalar;
+    vec4 result;
+    
+    result.x = a.x + b.x;
+    result.y = a.y + b.y;
+    result.z = a.z + b.z;
+    result.w = a.w + b.w;
+    
+    return result;
 }
 
-float dot_v4(vec4* a, vec4* b)
+vec4 sub_vec4(vec4 a, vec4 b)
 {
-    return (a->x * b->x) + (a->y * b->y) + (a->z * b->z) + (a->w * b->w);
+    vec4 result;
+    
+    result.x = a.x - b.x;
+    result.y = a.y - b.y;
+    result.z = a.z - b.z;
+    result.w = a.w - b.w;
+
+    return result;
 }
 
-float length_v4(vec4* a)
+vec4 scale_vec4(vec4 a, float scalar)
 {
-    return SQRT_F((a->x * a->x) + (a->y * a->y) + (a->z * a->z) + (a->w * a->w));
+    vec4 result;
+    
+    result.x = a.x * scalar;
+    result.y = a.y * scalar;
+    result.z = a.z * scalar;
+    result.w = a.w * scalar;
+    
+    return result;
 }
 
-void normalize_v4(vec4* a)
+vec4 normalize_vec4(vec4 a)
 {
-    float length = length_v4(a);
-    a->x /= length;
-    a->y /= length;
-    a->z /= length;
-    a->w /= length;
+    vec4 result;
+    
+    float length = length_vec4(a);
+    
+    result.x = a.x * length;
+    result.y = a.y * length;
+    result.z = a.z * length;
+    result.w = a.w * length;
+
+    return result;
+}
+float dot_vec4(vec4 a, vec4 b)
+{
+    return (a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w);
 }
 
-/*
-  
-  MAT3
-  
-*/
-
-void init_m3(mat3 out, float scalar)
+float length_vec4(vec4 a)
 {
-    out[0] = scalar;
-    out[1] = scalar;
-    out[2] = scalar;
-    out[3] = scalar;
-    out[4] = scalar;
-    out[5] = scalar;
-    out[6] = scalar;
-    out[7] = scalar;
-    out[8] = scalar;
-    out[9] = scalar;
+    return SQRT_F(SQUARE(a.x) + SQUARE(a.y) + SQUARE(a.z) + SQUARE(a.w));
 }
 
-void init_diag_m3(mat3 out, float scalar)
+int compare_vec4(vec4 a, vec4 b)
 {
-    out[0]  = scalar;
-    out[1]  = 0.0f;
-    out[2]  = 0.0f;
-    out[3]  = 0.0f;
-    out[4]  = scalar;
-    out[5]  = 0.0f;
-    out[6]  = 0.0f;
-    out[7]  = 0.0f;
-    out[8]  = scalar;  
+    return (
+        (a.x == b.x)
+        && (a.y == b.y)
+        && (a.z == b.z)
+        && (a.w == b.w));
+}
+
+//----------------------
+// MAT3X3
+//----------------------
+mat3x3 create_m3x3(float scalar)
+{
+    mat3x3 result;
+    
+    result.matrix[0] = scalar;
+    result.matrix[1] = scalar;
+    result.matrix[2] = scalar;
+    result.matrix[3] = scalar;
+    result.matrix[4] = scalar;
+    result.matrix[5] = scalar;
+    result.matrix[6] = scalar;
+    result.matrix[7] = scalar;
+    result.matrix[8] = scalar;
+    
+    return result;
+}
+
+mat3x3 create_diag_m3x3(float scalar)
+{
+    mat3x3 result;
+    
+    result.matrix[0]  = scalar;
+    result.matrix[1]  = 0.0f;
+    result.matrix[2]  = 0.0f;
+    result.matrix[3]  = 0.0f;
+    result.matrix[4]  = scalar;
+    result.matrix[5]  = 0.0f;
+    result.matrix[6]  = 0.0f;
+    result.matrix[7]  = 0.0f;
+    result.matrix[8]  = scalar;
+
+    return result;
 }    
 
-void copy_m3(mat3 out, mat3 source)
+mat3x3 copy_m3(mat3x3 a)
 {
-    out[0]  = source[0];
-    out[1]  = source[1];
-    out[2]  = source[2];
-    out[3]  = source[3];
-    out[4]  = source[4];
-    out[5]  = source[5];
-    out[6]  = source[6];
-    out[7]  = source[7];
-    out[8]  = source[8];
-    out[9]  = source[9];
+    mat3x3 result;
+    
+    result.matrix[0]  = a.matrix[0];
+    result.matrix[1]  = a.matrix[1];
+    result.matrix[2]  = a.matrix[2];
+    result.matrix[3]  = a.matrix[3];
+    result.matrix[4]  = a.matrix[4];
+    result.matrix[5]  = a.matrix[5];
+    result.matrix[6]  = a.matrix[6];
+    result.matrix[7]  = a.matrix[7];
+    result.matrix[8]  = a.matrix[8];
+
+    return result;
 }
 
-void mult_m3(mat3 out, mat3 a, mat3 b)
+mat3x3 mult_m3x3(mat3x3 a, mat3x3 b)
 {
+    mat3x3 result;
     
     // First row
-    out[0] =  a[0] * b[0]      +  a[3] * b[1]      + a[6] * b[2];
-    out[3] =  a[0] * b[3]      +  a[3] * b[4]      + a[6] * b[5];
-    out[6] =  a[0] * b[6]      +  a[3] * b[7]      + a[6] * b[8];
+    result.matrix[0] =  a.matrix[0] * b.matrix[0]    +  a.matrix[3] * b.matrix[1]      + a.matrix[6] * b.matrix[2];
+    result.matrix[3] =  a.matrix[0] * b.matrix[3]    +  a.matrix[3] * b.matrix[4]      + a.matrix[6] * b.matrix[5];
+    result.matrix[6] =  a.matrix[0] * b.matrix[6]    +  a.matrix[3] * b.matrix[7]      + a.matrix[6] * b.matrix[8];
 
     // Second row                                                
-    out[1] =  a[1] * b[0]      +  a[4] * b[1]      + a[7] * b[2];
-    out[4] =  a[1] * b[3]      +  a[4] * b[4]      + a[7] * b[5];
-    out[7] =  a[1] * b[6]      +  a[4] * b[7]      + a[7] * b[8];
+    result.matrix[1] =  a.matrix[1] * b.matrix[0]    +  a.matrix[4] * b.matrix[1]      + a.matrix[7] * b.matrix[2];
+    result.matrix[4] =  a.matrix[1] * b.matrix[3]    +  a.matrix[4] * b.matrix[4]      + a.matrix[7] * b.matrix[5];
+    result.matrix[7] =  a.matrix[1] * b.matrix[6]    +  a.matrix[4] * b.matrix[7]      + a.matrix[7] * b.matrix[8];
     
     // Third row
-    out[2] =  a[2] * b[0]      +  a[5] * b[1]      + a[8] * b[2];
-    out[5] =  a[2] * b[3]      +  a[5] * b[4]      + a[8] * b[5];
-    out[8] =  a[2] * b[6]      +  a[5] * b[7]      + a[8] * b[8];
+    result.matrix[2] =  a.matrix[2] * b.matrix[0]    +  a.matrix[5] * b.matrix[1]      + a.matrix[8] * b.matrix[2];
+    result.matrix[5] =  a.matrix[2] * b.matrix[3]    +  a.matrix[5] * b.matrix[4]      + a.matrix[8] * b.matrix[5];
+    result.matrix[8] =  a.matrix[2] * b.matrix[6]    +  a.matrix[5] * b.matrix[7]      + a.matrix[8] * b.matrix[8];
+
+    return result;
 }
 
 // Used on 'standard' matrices used for 2D operations
-void scale_m3(mat3 out, float x, float y)
+mat3x3 scale_m3x3(mat3x3 a, float x, float y)
 {
-    out[0] *= x;    
-    out[4] *= y;          
+    mat3x3 result = a;
+    
+    result.matrix[0] *= x;    
+    result.matrix[4] *= y;
+
+    return result;
 }
 
-void uniform_scale_m3(mat3 source, float scalar)
+vec3 mat3x3_mult_vec3(mat3x3 a, vec3 v)
 {
-    source[0] *= scalar;
-    source[1] *= scalar;
-    source[2] *= scalar;
-    source[3] *= scalar;
-    source[4] *= scalar;
-    source[5] *= scalar;
-    source[6] *= scalar;
-    source[7] *= scalar;
-    source[8] *= scalar;      
+    vec3 result;
+    
+    result.x = a.matrix[0]  * v.x     + a.matrix[3]  * v.y     + a.matrix[6]  * v.z;
+    result.y = a.matrix[1]  * v.x     + a.matrix[4]  * v.y     + a.matrix[7]  * v.z;
+    result.z = a.matrix[2]  * v.x     + a.matrix[5]  * v.y     + a.matrix[8]  * v.z;
+    
+    return result;
 }
 
-void m3_mult_v3(vec3* out, mat3 a, vec3* v)
+mat3x3 translate_mat3x3(mat3x3 a, vec2 translation)
 {
-    out->x = a[0]  * v->x      + a[3]  * v->y     + a[6]  * v->z;
-    out->y = a[1]  * v->x      + a[4]  * v->y     + a[7]  * v->z;
-    out->z = a[2]  * v->x      + a[5]  * v->y     + a[8] * v->z;
+    mat3x3 result = a;
+    
+    result.matrix[6] = translation.x;
+    result.matrix[7] = translation.y;
+
+    return result;
 }
 
-void translate_m3(mat3 out, vec2* translation)
+//----------------------
+// MAT4X4
+//----------------------
+mat4x4 create_mat4x4(float scalar)
 {
-    out[6] = translation->x;
-    out[7] = translation->y;    
+    mat4x4 result;
+    
+    result.matrix[0] = scalar;
+    result.matrix[1] = scalar;
+    result.matrix[2] = scalar;
+    result.matrix[3] = scalar;
+    result.matrix[4] = scalar;
+    result.matrix[5] = scalar;
+    result.matrix[6] = scalar;
+    result.matrix[7] = scalar;
+    result.matrix[8] = scalar;
+    result.matrix[9] = scalar;
+    result.matrix[10] = scalar;
+    result.matrix[11] = scalar;
+    result.matrix[12] = scalar;
+    result.matrix[13] = scalar;
+    result.matrix[14] = scalar;
+    result.matrix[15] = scalar;
+    
+    return result;
 }
 
-/*
-  
-  MAT4
-  
-*/
-
-void init_m4(mat4 out, float scalar)
+mat4x4 create_diag_mat4x4(float scalar)
 {
-    out[0] = scalar;
-    out[1] = scalar;
-    out[2] = scalar;
-    out[3] = scalar;
-    out[4] = scalar;
-    out[5] = scalar;
-    out[6] = scalar;
-    out[7] = scalar;
-    out[8] = scalar;
-    out[9] = scalar;
-    out[10] = scalar;
-    out[11] = scalar;
-    out[12] = scalar;
-    out[13] = scalar;
-    out[14] = scalar;
-    out[15] = scalar;    
-}
+    mat4x4 result = {0};
+    
+    result.matrix[0]  = scalar;
+    result.matrix[5]  = scalar;
+    result.matrix[10] = scalar;
+    result.matrix[15] = scalar;
 
-void init_diag_m4(mat4 out, float scalar)
-{
-    out[0]  = scalar;
-    out[1]  = 0.0f;
-    out[2]  = 0.0f;
-    out[3]  = 0.0f;
-    out[4]  = 0.0f;
-    out[5]  = scalar;
-    out[6]  = 0.0f;
-    out[7]  = 0.0f;
-    out[8]  = 0.0f;
-    out[9]  = 0.0f;
-    out[10] = scalar;
-    out[11] = 0.0f;
-    out[12] = 0.0f;
-    out[13] = 0.0f;
-    out[14] = 0.0f;
-    out[15] = scalar;    
+    return result;
 }    
 
-void copy_m4(mat4 out, mat4 source)
+mat4x4 copy_mat4x4(mat4x4 source)
 {
-    out[0]  = source[0];
-    out[1]  = source[1];
-    out[2]  = source[2];
-    out[3]  = source[3];
-    out[4]  = source[4];
-    out[5]  = source[5];
-    out[6]  = source[6];
-    out[7]  = source[7];
-    out[8]  = source[8];
-    out[9]  = source[9];
-    out[10] = source[10];
-    out[11] = source[11];
-    out[12] = source[12];
-    out[13] = source[13];
-    out[14] = source[14];
-    out[15] = source[15];
+    mat4x4 result;
+    
+    result.matrix[0]  = source.matrix[0];
+    result.matrix[1]  = source.matrix[1];
+    result.matrix[2]  = source.matrix[2];
+    result.matrix[3]  = source.matrix[3];
+    result.matrix[4]  = source.matrix[4];
+    result.matrix[5]  = source.matrix[5];
+    result.matrix[6]  = source.matrix[6];
+    result.matrix[7]  = source.matrix[7];
+    result.matrix[8]  = source.matrix[8];
+    result.matrix[9]  = source.matrix[9];
+    result.matrix[10] = source.matrix[10];
+    result.matrix[11] = source.matrix[11];
+    result.matrix[12] = source.matrix[12];
+    result.matrix[13] = source.matrix[13];
+    result.matrix[14] = source.matrix[14];
+    result.matrix[15] = source.matrix[15];
+
+    return result;
 }
 
-void mult_m4(mat4 out, mat4 a, mat4 b)
+mat4x4 mult_mat4x4(mat4x4 a, mat4x4 b)
 {
+    mat4x4 result;
     
     /* First row */
-    out[0] =  a[0] * b[0]      +  a[4] * b[1]      + a[8] * b[2]       + a[12] * b[3];
-    out[4] =  a[0] * b[4]      +  a[4] * b[5]      + a[8] * b[6]       + a[12] * b[7];
-    out[8] =  a[0] * b[8]      +  a[4] * b[9]      + a[8] * b[10]      + a[12] * b[11];
-    out[12] =  a[0] * b[12]     +  a[4] * b[13]     + a[8] * b[14]      + a[12] * b[15];
+    result.matrix[0] =  a.matrix[0] * b.matrix[0]      +  a.matrix[4] * b.matrix[1]      + a.matrix[8] * b.matrix[2]       + a.matrix[12] * b.matrix[3];
+    result.matrix[4] =  a.matrix[0] * b.matrix[4]      +  a.matrix[4] * b.matrix[5]      + a.matrix[8] * b.matrix[6]       + a.matrix[12] * b.matrix[7];
+    result.matrix[8] =  a.matrix[0] * b.matrix[8]      +  a.matrix[4] * b.matrix[9]      + a.matrix[8] * b.matrix[10]      + a.matrix[12] * b.matrix[11];
+    result.matrix[12] =  a.matrix[0] * b.matrix[12]     +  a.matrix[4] * b.matrix[13]     + a.matrix[8] * b.matrix[14]      + a.matrix[12] * b.matrix[15];
 
     /* Second row */
-    out[1] =  a[1] * b[0]      +  a[5] * b[1]      + a[9] * b[2]       + a[13] * b[3];
-    out[5] =  a[1] * b[4]      +  a[5] * b[5]      + a[9] * b[6]       + a[13] * b[7];
-    out[9] =  a[1] * b[8]      +  a[5] * b[9]      + a[9] * b[10]      + a[13] * b[11];
-    out[13] =  a[1] * b[12]     +  a[5] * b[13]     + a[9] * b[14]      + a[13] * b[15];
+    result.matrix[1] =  a.matrix[1] * b.matrix[0]      +  a.matrix[5] * b.matrix[1]      + a.matrix[9] * b.matrix[2]       + a.matrix[13] * b.matrix[3];
+    result.matrix[5] =  a.matrix[1] * b.matrix[4]      +  a.matrix[5] * b.matrix[5]      + a.matrix[9] * b.matrix[6]       + a.matrix[13] * b.matrix[7];
+    result.matrix[9] =  a.matrix[1] * b.matrix[8]      +  a.matrix[5] * b.matrix[9]      + a.matrix[9] * b.matrix[10]      + a.matrix[13] * b.matrix[11];
+    result.matrix[13] =  a.matrix[1] * b.matrix[12]     +  a.matrix[5] * b.matrix[13]     + a.matrix[9] * b.matrix[14]      + a.matrix[13] * b.matrix[15];
     
     /* Third row */
-    out[2] =  a[2] * b[0]      +  a[6] * b[1]      + a[10] * b[2]       + a[14] * b[3];
-    out[6] =  a[2] * b[4]      +  a[6] * b[5]      + a[10] * b[6]       + a[14] * b[7];
-    out[10] = a[2] * b[8]      +  a[6] * b[9]      + a[10] * b[10]      + a[14] * b[11];
-    out[14] = a[2] * b[12]     +  a[6] * b[13]     + a[10] * b[14]      + a[14] * b[15]; 
+    result.matrix[2] =  a.matrix[2] * b.matrix[0]      +  a.matrix[6] * b.matrix[1]      + a.matrix[10] * b.matrix[2]       + a.matrix[14] * b.matrix[3];
+    result.matrix[6] =  a.matrix[2] * b.matrix[4]      +  a.matrix[6] * b.matrix[5]      + a.matrix[10] * b.matrix[6]       + a.matrix[14] * b.matrix[7];
+    result.matrix[10] = a.matrix[2] * b.matrix[8]      +  a.matrix[6] * b.matrix[9]      + a.matrix[10] * b.matrix[10]      + a.matrix[14] * b.matrix[11];
+    result.matrix[14] = a.matrix[2] * b.matrix[12]     +  a.matrix[6] * b.matrix[13]     + a.matrix[10] * b.matrix[14]      + a.matrix[14] * b.matrix[15]; 
 
     /* Fourth row */
-    out[3] = a[3] * b[0]      +  a[7] * b[1]      + a[11] * b[2]       + a[15] * b[3];
-    out[7] = a[3] * b[4]      +  a[7] * b[5]      + a[11] * b[6]       + a[15] * b[7];
-    out[11] = a[3] * b[8]      +  a[7] * b[9]      + a[11] * b[10]      + a[15] * b[11];
-    out[15] = a[3] * b[12]     +  a[7] * b[13]     + a[11] * b[14]      + a[15] * b[15]; 
+    result.matrix[3] = a.matrix[3] * b.matrix[0]      +  a.matrix[7] * b.matrix[1]      + a.matrix[11] * b.matrix[2]       + a.matrix[15] * b.matrix[3];
+    result.matrix[7] = a.matrix[3] * b.matrix[4]      +  a.matrix[7] * b.matrix[5]      + a.matrix[11] * b.matrix[6]       + a.matrix[15] * b.matrix[7];
+    result.matrix[11] = a.matrix[3] * b.matrix[8]      +  a.matrix[7] * b.matrix[9]      + a.matrix[11] * b.matrix[10]      + a.matrix[15] * b.matrix[11];
+    result.matrix[15] = a.matrix[3] * b.matrix[12]     +  a.matrix[7] * b.matrix[13]     + a.matrix[11] * b.matrix[14]      + a.matrix[15] * b.matrix[15];
+
+    return result;
 }
 
 /* Used on 'standard' matrices used for 3D operations meaning it will only be used on the diagonal except for the last element */
-void scale_m4(mat4 out, float x, float y, float z)
+mat4x4 scale_mat4x4(mat4x4 a, float x, float y, float z)
 {
-    out[0] *= x;    
-    out[5] *= y;   
-    out[10] *= z;        
+    mat4x4 result = a;
+    
+    result.matrix[0] *= x;    
+    result.matrix[5] *= y;   
+    result.matrix[10] *= z;
+
+    return result;
 }
 
-void uniform_scale_m4(mat4 source, float scalar)
+vec4 mat4x4_mult_vec4(mat4x4 a, vec4 v)
 {
-    source[0] *= scalar;
-    source[1] *= scalar;
-    source[2] *= scalar;
-    source[3] *= scalar;
-    source[4] *= scalar;
-    source[5] *= scalar;
-    source[6] *= scalar;
-    source[7] *= scalar;
-    source[8] *= scalar;
-    source[9] *= scalar;
-    source[10] *= scalar;
-    source[11] *= scalar;
-    source[12] *= scalar;
-    source[13] *= scalar;
-    source[14] *= scalar;
-    source[15] *= scalar;       
+    vec4 result = {0};
+    
+    result.x = a.matrix[0] * v.x      + a.matrix[4] * v.y     + a.matrix[8]  * v.z     + a.matrix[12] * v.w;
+    result.y = a.matrix[1] * v.x      + a.matrix[5] * v.y     + a.matrix[9]  * v.z     + a.matrix[13] * v.w;
+    result.w = a.matrix[2] * v.x      + a.matrix[6] * v.y     + a.matrix[10] * v.z     + a.matrix[14] * v.w;
+    result.z = a.matrix[3] * v.x       + a.matrix[7] * v.y     + a.matrix[11] * v.z     + a.matrix[15] * v.w;
+
+    return result;
 }
 
-void m4_mult_v4(vec4* out, mat4 a, vec4* v)
+mat4x4 translate_mat4x4(mat4x4 a, vec3 translation)
 {
-    out->x = a[0] * v->x      + a[4] * v->y     + a[8]  * v->z     + a[12] * v->w;
-    out->y = a[1] * v->x      + a[5] * v->y     + a[9]  * v->z     + a[13] * v->w;
-    out->w = a[2] * v->x      + a[6] * v->y     + a[10] * v->z     + a[14] * v->w;
-    out->z = a[3] * v->x       + a[7] * v->y     + a[11] * v->z     + a[15] * v->w;        
+    mat4x4 result = a;
+    
+    result.matrix[12] = translation.x;
+    result.matrix[13] = translation.y;
+    result.matrix[14] = translation.z;
+    
+    return result;
 }
 
-void translate_m4(mat4 out, vec3* translation)
-{
-    out[12] = translation->x;
-    out[13] = translation->y;
-    out[14] = translation->z;    
-}
-
-void rotate_m4(mat4 out, float theta, vec3* axis)
+mat4x4 rotate_mat4x4(mat4x4 to_be_rotated_matrix, float theta, vec3 axis)
 {    
-    mat4 temp, rot;
+    mat4x4 rot = {0};
     
-    rot[0]  = (float)cos(theta) + SQUARE(axis->x)*(1-(float)cos(theta));
-    rot[1]  = axis->y*axis->x*(1-(float)cos(theta)) + axis->z*(float)sin(theta);
-    rot[2]  = axis->z*axis->x*(1-(float)cos(theta)) - axis->y*(float)sin(theta);
-    rot[3]  = 0.0f;
+    rot.matrix[0]  = (float)cos(theta) + SQUARE(axis.x)*(1-(float)cos(theta));
+    rot.matrix[1]  = axis.y*axis.x*(1-(float)cos(theta)) + axis.z*(float)sin(theta);
+    rot.matrix[2]  = axis.z*axis.x*(1-(float)cos(theta)) - axis.y*(float)sin(theta);
+    rot.matrix[3]  = 0.0f;
     
-    rot[4]  = axis->x*axis->y*(1-(float)cos(theta)) - axis->z*(float)sin(theta);
-    rot[5]  = (float)cos(theta) + SQUARE(axis->y)*(1-(float)cos(theta));
-    rot[6]  = axis->z*axis->y*(1-(float)cos(theta)) + axis->x*(float)sin(theta);
-    rot[7]  = 0.0f;
+    rot.matrix[4]  = axis.x*axis.y*(1-(float)cos(theta)) - axis.z*(float)sin(theta);
+    rot.matrix[5]  = (float)cos(theta) + SQUARE(axis.y)*(1-(float)cos(theta));
+    rot.matrix[6]  = axis.z*axis.y*(1-(float)cos(theta)) + axis.x*(float)sin(theta);
+    rot.matrix[7]  = 0.0f;
 
-    rot[8]  = axis->x*axis->z*(1-(float)cos(theta)) + axis->y*(float)sin(theta);
-    rot[9]  = axis->y*axis->z*(1-(float)cos(theta)) - axis->x*(float)sin(theta);
-    rot[10] = (float)cos(theta) + SQUARE(axis->z)*(1-(float)cos(theta));
-    rot[11] = 0.0f;
+    rot.matrix[8]  = axis.x*axis.z*(1-(float)cos(theta)) + axis.y*(float)sin(theta);
+    rot.matrix[9]  = axis.y*axis.z*(1-(float)cos(theta)) - axis.x*(float)sin(theta);
+    rot.matrix[10] = (float)cos(theta) + SQUARE(axis.z)*(1-(float)cos(theta));
+    rot.matrix[11] = 0.0f;
 
-    rot[12] = 0.0f;
-    rot[13] = 0.0f;
-    rot[14] = 0.0f;
-    rot[15] = 1.0f;   
+    rot.matrix[12] = 0.0f;
+    rot.matrix[13] = 0.0f;
+    rot.matrix[14] = 0.0f;
+    rot.matrix[15] = 1.0f;   
 
-    mult_m4(temp, out, rot);
-    copy_m4(out, temp);
+    return mult_mat4x4(rot, to_be_rotated_matrix);
     
 }
 
@@ -602,98 +694,113 @@ void rotate_m4(mat4 out, float theta, vec3* axis)
   http://www.songho.ca/opengl/gl_projectionmatrix.html   
 */
 
-void frustum(mat4 out, float l, float r, float t, float b, float n, float f)
+mat4x4 frustum(float l, float r, float t, float b, float n, float f)
 {
-    out[0] = 2.0f * n / (r - l);
-    out[1] = 0.0f;
-    out[2] = 0.0f;
-    out[3] = 0.0f;
-    out[4] = 0.0f;
-    out[5] =  2.0f * n / (t - b);
-    out[6] = 0.0f;
-    out[7] = 0.0f;
-    out[8] = (r + l) / (r - l);
-    out[9] = (t + b) / (t - b);    
-    out[10] = (n + f) / (n - f);
-    out[11] = -1.0f;
-    out[12] = 0.0f;
-    out[13] = 0.0f;
-    out[14] = 2*f*n / (n-f);
-    out[15] = 0.0f;
+    mat4x4 result;
+    
+    result.matrix[0] = 2.0f * n / (r - l);
+    result.matrix[1] = 0.0f;
+    result.matrix[2] = 0.0f;
+    result.matrix[3] = 0.0f;
+    result.matrix[4] = 0.0f;
+    result.matrix[5] =  2.0f * n / (t - b);
+    result.matrix[6] = 0.0f;
+    result.matrix[7] = 0.0f;
+    result.matrix[8] = (r + l) / (r - l);
+    result.matrix[9] = (t + b) / (t - b);    
+    result.matrix[10] = (n + f) / (n - f);
+    result.matrix[11] = -1.0f;
+    result.matrix[12] = 0.0f;
+    result.matrix[13] = 0.0f;
+    result.matrix[14] = 2*f*n / (n-f);
+    result.matrix[15] = 0.0f;
+
+    return result;
 }
 
-void ortho(mat4 out, float l, float r, float b, float t, float n, float f)
+mat4x4 ortho(float l, float r, float b, float t, float n, float f)
 {
-    out[0] = 2.0f / (r-l);
-    out[1] = 0.0f;
-    out[2] = 0.0f;
-    out[3] = 0.0f;
-    out[4] = 0.0f;
-    out[5] = 2.0f / (t-b);
-    out[6] = 0.0f;
-    out[7] = 0.0f;
-    out[8] = 0.0f;
-    out[9] = 0.0f;
-    out[10] = - 2.0f / (f - n);
-    out[11] = 0.0f;
-    out[12] = -(r + l) / (r - l);
-    out[13] = -(t + b) / (t - b);
-    out[14] = -(f + n) / (f - n);
-    out[15] = 1.0f;
+    mat4x4 result;
+    
+    result.matrix[0] = 2.0f / (r-l);
+    result.matrix[1] = 0.0f;
+    result.matrix[2] = 0.0f;
+    result.matrix[3] = 0.0f;
+    result.matrix[4] = 0.0f;
+    result.matrix[5] = 2.0f / (t-b);
+    result.matrix[6] = 0.0f;
+    result.matrix[7] = 0.0f;
+    result.matrix[8] = 0.0f;
+    result.matrix[9] = 0.0f;
+    result.matrix[10] = - 2.0f / (f - n);
+    result.matrix[11] = 0.0f;
+    result.matrix[12] = -(r + l) / (r - l);
+    result.matrix[13] = -(t + b) / (t - b);
+    result.matrix[14] = -(f + n) / (f - n);
+    result.matrix[15] = 1.0f;
+
+    return result;
 }
 
 /*
   https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix
 */
-void perspective(mat4 out, float fov, float aspect, float n, float f)
+mat4x4 perspective(float fov, float aspect, float n, float f)
 {
+    mat4x4 result;
     float fov_angle = (float)tan(fov / 2.0f);
-    out[0] = 1.0f / (aspect * fov_angle);
-    out[1] = 0.0f;
-    out[2] = 0.0f;
-    out[3] = 0.0f;
-    out[4] = 0.0f;
-    out[5] =  1.0f / fov_angle;
-    out[6] = 0.0f;
-    out[7] = 0.0f;
-    out[8] = 0.0f;
-    out[9] = 0.0f;
-    out[10] = (n + f) / (n - f);
-    out[11] = -1.0f;
-    out[12] = 0.0f;
-    out[13] = 0.0f;
-    out[14] = 2.0f * f * n / (n - f);
-    out[15] = 0.0f;
+    
+    result.matrix[0] = 1.0f / (aspect * fov_angle);
+    result.matrix[1] = 0.0f;
+    result.matrix[2] = 0.0f;
+    result.matrix[3] = 0.0f;
+    result.matrix[4] = 0.0f;
+    result.matrix[5] =  1.0f / fov_angle;
+    result.matrix[6] = 0.0f;
+    result.matrix[7] = 0.0f;
+    result.matrix[8] = 0.0f;
+    result.matrix[9] = 0.0f;
+    result.matrix[10] = (n + f) / (n - f);
+    result.matrix[11] = -1.0f;
+    result.matrix[12] = 0.0f;
+    result.matrix[13] = 0.0f;
+    result.matrix[14] = (2.0f * f * n) / (n - f);
+    result.matrix[15] = 0.0f;
+
+    return result;
 }
 
-void look_at(mat4 out, vec3* cam_pos, vec3* at, vec3* up)
+mat4x4 look_at(vec3 cam_pos, vec3 at, vec3 up)
 {
+    mat4x4 result = {0};
     vec3 x_axis, y_axis, z_axis;
     
-    sub_v3(&z_axis, cam_pos, at);    
-    normalize_v3(&z_axis);
+    z_axis = sub_vec3(cam_pos, at);    
+    z_axis = normalize_vec3(z_axis);
     
-    cross_v3(&x_axis, &z_axis, up);
-    normalize_v3(&x_axis);
+    x_axis = cross_vec3(z_axis, up);
+    x_axis = normalize_vec3(x_axis);
 
-    cross_v3(&y_axis, &x_axis, &z_axis);
+    y_axis = cross_vec3(x_axis, z_axis);
     
-    out[0] = x_axis.x;
-    out[1] = y_axis.x;
-    out[2] = z_axis.x;
-    out[3] = 0.0f;
-    out[4] = x_axis.y;
-    out[5] = y_axis.y;
-    out[6] = z_axis.y;
-    out[7] = 0.0f;
-    out[8] = x_axis.z;
-    out[9] = y_axis.z;
-    out[10] = z_axis.z;
-    out[11] = 0.0f;    
-    out[12] = -dot_v3(&x_axis, cam_pos);
-    out[13] = -dot_v3(&y_axis, cam_pos);
-    out[14] = -dot_v3(&z_axis, cam_pos);    
-    out[15] = 1.0f;    
+    result.matrix[0] = x_axis.x;
+    result.matrix[1] = y_axis.x;
+    result.matrix[2] = z_axis.x;
+    result.matrix[3] = 0.0f;
+    result.matrix[4] = x_axis.y;
+    result.matrix[5] = y_axis.y;
+    result.matrix[6] = z_axis.y;
+    result.matrix[7] = 0.0f;
+    result.matrix[8] = x_axis.z;
+    result.matrix[9] = y_axis.z;
+    result.matrix[10] = z_axis.z;
+    result.matrix[11] = 0.0f;    
+    result.matrix[12] = -dot_vec3(x_axis, cam_pos);
+    result.matrix[13] = -dot_vec3(y_axis, cam_pos);
+    result.matrix[14] = -dot_vec3(z_axis, cam_pos);    
+    result.matrix[15] = 1.0f;
+
+    return result;
 }
 
 #endif

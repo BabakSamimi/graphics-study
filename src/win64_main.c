@@ -52,6 +52,7 @@ typedef struct
     int camera_control;
 
     int reloading_shaders;
+    int wireframe_on;
     
 } AppState;
 
@@ -68,38 +69,62 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    if(action == GLFW_PRESS)
     {
-        
-        if(state.camera_control)
+        switch(key)
         {
-            // Disable fps control and show cursor
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);  
-        }
-        else
-        {
-            // Enable fps control and disable cursor
-            glfwGetCursorPos(window, &state.mouse_last_x, &state.mouse_last_y);
+            case GLFW_KEY_ESCAPE:
+            {
+                
+                if(state.camera_control)
+                {
+                    // Disable fps control and show cursor
+                    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);  
+                }
+                else
+                {
+                    // Enable fps control and disable cursor
+                    glfwGetCursorPos(window, &state.mouse_last_x, &state.mouse_last_y);
             
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
+                    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
+                }
+        
+                state.camera_control = !state.camera_control;
+                
+                break;
+            }
+            case GLFW_KEY_R:
+            {
+                if(!state.reloading_shaders)
+                {
+                    state.reloading_shaders = 1;
+        
+                    if(reload_shader_bank())
+                    {
+                        printf("Successfully reloaded shaders\n");
+                    }
+                    else
+                        printf("Shader reloading failed\n");
+        
+                    state.reloading_shaders = 0;                     
+                }
+
+                break;
+            }
+            case GLFW_KEY_1:
+            {
+                state.wireframe_on = !state.wireframe_on;
+                
+                if(state.wireframe_on)
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                else
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                break;
+            }
+            default: break;               
         }
-        
-        state.camera_control = !state.camera_control;
-        
-    }    
-	else if(!state.reloading_shaders && key == GLFW_KEY_R && action == GLFW_PRESS)
-    {
-        state.reloading_shaders = 1;
-        
-        if(reload_shader_bank())
-        {
-            printf("Successfully reloaded shaders\n");
-        }
-        else
-            printf("Shader reloading failed\n");
-        
-        state.reloading_shaders = 0;
     }
+
 }
 
 void scroll_callback(GLFWwindow* window, double x_offset, double y_offset)
@@ -327,14 +352,15 @@ int main(void)
 
     state.sensitivity = 0.1f;
     state.camera_control = 1;
+    state.wireframe_on = 0;
 
     vec3 cam_pos, cam_dir, cam_up;
 
-    init_v3(&cam_pos, 0.0f, 0.0f, 5.0f);
-    init_v3(&cam_dir, 0.0f, 0.0f, -1.0f);
-    init_v3(&cam_up, 0.0f, 1.0f, 0.0f);
+    cam_pos = create_vec3(0.0f, 0.0f, 5.0f);
+    cam_dir = create_vec3(0.0f, 0.0f, -1.0f);
+    cam_up = create_vec3(0.0f, 1.0f, 0.0f);
         
-    init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 4.0f);        
+    init_camera(&cam, cam_pos, cam_dir, cam_up, state.fov, 6.0f);        
 
     float padding = 2.0f;
     vec3 box_positions[6] = {
@@ -363,8 +389,8 @@ int main(void)
     };
 
     vec3 light_pos, light_color;
-    init_v3(&light_pos, 0.0f, 0.0f, 0.0f);
-    init_v3(&light_color, 0.0f, 1.0f, 1.0f);
+    light_pos = create_vec3(.0f, 0.0f, 0.0f);
+    light_color = create_vec3(0.0f, 1.0f, 1.0f);
     
     double reload_time = glfwGetTime();
     int frames_elapsed = 0;
@@ -406,27 +432,25 @@ int main(void)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         /* Model-view-projection */
-        mat4 model, view, projection;
+        mat4x4 model, view, projection;
         vec3 rotation_axis, trans_vec;
 
         // Calculate perspective projection matrix
-        perspective(projection, RADIANS(cam.fov), (float)window_width/(float)window_height, 0.1f, 100.0f);
-        
-        init_diag_m4(view, 1.0f);
+        projection = perspective(RADIANS(cam.fov), (float)window_width/(float)window_height, 0.1f, 100.0f);        
         
 #if 0
         /* Translate scene forward */         
-        init_v3(&trans_vec, 0.0f, 0.0f, -3.0f);                        
-        translate_m4(view, &trans_vec);
+        create_vec3(0.0f, 0.0f, -3.0f);                        
+        view = translate_mat4x4(view, transl_vec);
 #endif
 
-        get_camera_view_matrix(view, &cam);        
+        view = get_camera_view_matrix(&cam);        
 
         /* Render cube */
         use_program_name("cube");
 
-        set_mat4f("view", view);
-        set_mat4f("projection", projection);                         
+        set_mat4f("view", view.matrix);
+        set_mat4f("projection", projection.matrix);                         
 
         // bind textures
         glActiveTexture(GL_TEXTURE0);
@@ -527,27 +551,28 @@ int main(void)
         }
         
         // Rotate in model space        
-               //init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
-               //rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);               
+               //create_vec3(&rotation_axis, 1.0f, 0.0f, 0.0f);
+               //rotate_mat4x4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);               
         
 #if 1
         for(unsigned int box_index = 0; box_index < 6; box_index++)
         {
-            init_diag_m4(model, 1.0f);
-
-            init_v3(&rotation_axis, 1.0f, 0.0f, 0.0f);
-            rotate_m4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);
-            translate_m4(model, &box_positions[box_index]);
+            model = create_diag_mat4x4(1.0f);
+            rotation_axis = create_vec3(0.0f, 1.0f, 0.0f);
             
-            set_mat4f("model", model);
+            model = scale_mat4x4(model, 1.0f, 2.0f, 1.0f);
+            model = rotate_mat4x4(model, (float)sin(0.50 * (float)glfwGetTime() * RADIANS(90.0f)), rotation_axis);
+            model = translate_mat4x4(model, box_positions[box_index]);
+            
+            set_mat4f("model", model.matrix);
             
             BindVertArr(va);
             glDrawArrays(GL_TRIANGLES, 0, 36);
             
         }
 #else
-        init_diag_m4_(model, 1.0f);
-        set_mat4f("model", model);
+        model = create_diag_mat4x4(1.0f);
+        set_mat4f("model", model.matrix);
         
         /* Draw cube */
         BindVertArr(va);                       
@@ -563,15 +588,18 @@ int main(void)
         {
             vec3 pos = pointlight_positions[i][0];
             vec3 color = pointlight_positions[i][1];
+            vec3 rotation_axis = create_vec3(0.0f, 1.0f, 0.0f);
+            model = create_diag_mat4x4(1.0f);
+            
+            model = scale_mat4x4(model, 3.0f, 0.2f, 0.2f);            
+            model = rotate_mat4x4(model, (float)glfwGetTime(), rotation_axis);
+            model = translate_mat4x4(model, pos);
 
-            init_diag_m4(model, 1.0f);        
-            scale_m4(model, 3.0f, 0.2f, 0.2f);       
-            translate_m4(model, &pos);
             set_vec3f("light_color", color.x, color.y, color.z);
 
-            set_mat4f("model", model);
-            set_mat4f("view", view);
-            set_mat4f("projection", projection);
+            set_mat4f("model", model.matrix);
+            set_mat4f("view", view.matrix);
+            set_mat4f("projection", projection.matrix);
         
             BindVertArr(light_va);
             glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -586,8 +614,8 @@ int main(void)
         
             mat4 ortho_proj;
 
-            init_diag_m4(model, 1.0f);
-            init_diag_m4(ortho_proj, 1.0f);
+            create_diag_m4(model, 1.0f);
+            create_diag_m4(ortho_proj, 1.0f);
             ortho(ortho_proj, 0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f);
 
             // Size and scaling
@@ -597,16 +625,15 @@ int main(void)
             float rect_width_ndc = rect_width / window_width;
             float rect_height_ndc = rect_height / window_height;        
 
-            scale_m4(model, rect_width_ndc, rect_height_ndc, 0.0f);
+            scale_mat4x4(model, rect_width_ndc, rect_height_ndc, 0.0f);
 
             // Positioning
-            vec3 rect_pos;
-            init_v3(&rect_pos, 0.5f - rect_width_ndc * 0.5f, 0.5f - rect_height_ndc * 0.5f, 0.0f);
+            vec3 rect_pos = create_vec3(0.5f - rect_width_ndc * 0.5f, 0.5f - rect_height_ndc * 0.5f, 0.0f);
 
-            translate_m4(model, &rect_pos);
+            model = translate_mat4x4(model, &rect_pos);
 
-            set_mat4f("model", model);
-            set_mat4f("projection", ortho_proj);
+            set_mat4f("model", model.matrix);
+            set_mat4f("projection", ortho_proj.matrix);
             set_vec3f("color", 0.0f, 255.0f, 0.0f);
             set_float("scale", 0.5f);
         
