@@ -200,9 +200,8 @@ bool reload_shader_bank()
     return status;    
 }
 
-void use_program_name(unsigned char* program_name)
+void use_program_name(char* program_name)
 {
-    
     /* Naive */
     for(unsigned index = 0; index < shaders.programs_count; index++)
     {
@@ -232,7 +231,7 @@ void use_program(unsigned int program)
     
 }
 
-void query_program(unsigned int* program, unsigned char* program_name)
+void query_program(unsigned int* program, char* program_name)
 {
 
     /* Naive */
@@ -253,37 +252,37 @@ void get_active_program(unsigned int* program)
     *program = shaders.programs[shaders.active_program_index];
 }
 
-void set_float(unsigned char* name, float val)
+void set_float(char* name, float val)
 {
     glUniform1f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val);
 }
 
-void set_int(unsigned char* name, int val)
+void set_int(char* name, int val)
 {
     glUniform1i(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val);    
 }
 
-void set_vec4f(unsigned char* name, float a, float b, float c, float d)
+void set_vec4f(char* name, float a, float b, float c, float d)
 {
     glUniform4f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b, c, d);    
 }
 
-void set_vec3f(unsigned char* name, float a, float b, float c)
+void set_vec3f(char* name, float a, float b, float c)
 {
     glUniform3f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b, c);        
 }
 
-void set_vec2f(unsigned char* name, float a, float b)
+void set_vec2f(char* name, float a, float b)
 {
     glUniform2f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b);        
 }
 
-void set_mat4f(unsigned char* name, float* val)
+void set_mat4f(char* name, float* val)
 {
     glUniformMatrix4fv(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), 1, GL_FALSE, val);
 }
 
-void set_mat3f(unsigned char* name, float* val)
+void set_mat3f(char* name, float* val)
 {
     glUniformMatrix3fv(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), 1, GL_FALSE, val);
 }

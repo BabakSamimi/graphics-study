@@ -2,7 +2,7 @@ __declspec(dllexport) int NvOptimusEnablement = 1;
 __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 #include <stdio.h> // printf
-#include <stdbool.h> // true, false
+#include <stdbool.h>
 #include <math.h> // sin
 
 #include "glad/glad.h"
@@ -10,8 +10,12 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 #define ArrayCount(A) (sizeof((A)) / sizeof((A)[0]))
 
-int window_width = 1280;
-int window_height = 720;
+/*
+  TODO:
+  * Cache glGetUniformLocation calls
+  * Implement our own string struct
+  * UTF-8
+*/
 
 // app code
 #define STB_IMAGE_IMPLEMENTATION
@@ -51,8 +55,11 @@ typedef struct
     
 } AppState;
 
+Camera cam;
 AppState state;
 extern ShaderBank shaders;
+int window_width = 1280;
+int window_height = 720;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -321,16 +328,13 @@ int main(void)
     state.sensitivity = 0.1f;
     state.camera_control = 1;
 
-    Camera cam;
-    {    
-        vec3 cam_pos, cam_dir, cam_up;
+    vec3 cam_pos, cam_dir, cam_up;
 
-        init_v3(&cam_pos, 0.0f, 0.0f, 5.0f);
-        init_v3(&cam_dir, 0.0f, 0.0f, -1.0f);
-        init_v3(&cam_up, 0.0f, 1.0f, 0.0f);
+    init_v3(&cam_pos, 0.0f, 0.0f, 5.0f);
+    init_v3(&cam_dir, 0.0f, 0.0f, -1.0f);
+    init_v3(&cam_up, 0.0f, 1.0f, 0.0f);
         
-        init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 4.0f);        
-    }
+    init_camera(&cam, &cam_pos, &cam_dir, &cam_up, state.fov, 4.0f);        
 
     float padding = 2.0f;
     vec3 box_positions[6] = {
@@ -357,7 +361,6 @@ int main(void)
             { 0.0f, 0.0f, 1.0f }
         },        
     };
-
 
     vec3 light_pos, light_color;
     init_v3(&light_pos, 0.0f, 0.0f, 0.0f);
@@ -399,7 +402,7 @@ int main(void)
         
         
         /* Render starts here */
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         /* Model-view-projection */
@@ -471,7 +474,7 @@ int main(void)
             set_vec3f("dir_light.phong.specular", 0.5f, 0.5f, 0.5f);
         }
         
-        // Set pointlight
+        // Set pointlights
         {
             vec3 pos = pointlight_positions[0][0];
             vec3 colors = pointlight_positions[0][1];
@@ -554,8 +557,7 @@ int main(void)
         
         // Render light cubes
 #if 1       
-        use_program_name("light");
-        
+        use_program_name("light");        
 
         for(int i = 0; i < 4; i++)
         {

@@ -21,6 +21,10 @@ void main()
 
 #endif
 
+//-------------------------------------------------------//
+//-------------------END-OF-VERTEX-----------------------//
+//-------------------------------------------------------//
+
 #ifdef FRAGMENT_SHADER
 #define PI 3.14159265
 
@@ -58,7 +62,7 @@ struct SpotLight {
     float outer_cutoff;
 };
 
-in vec3 normal; // normal of the fragment
+in vec3 normal; // Normal of the fragment. Fragments sitting in the same triangle will share the same normal (?)
 in vec3 frag_pos;
 in vec2 tex_coords;
 
@@ -150,23 +154,27 @@ vec3 CalculateSpotLight(SpotLight light, vec3 normal, vec3 frag_pos, vec3 view_d
 void main()
 {
     // get pixel colour of the surface
-    Phong phong_texels;
-    phong_texels.diffuse = vec3(texture(material.diffuse, tex_coords)).rgb; 
-    phong_texels.specular = vec3(texture(material.specular, tex_coords)).rgb;
+    Phong phong;
+    phong.diffuse = vec3(texture(material.diffuse, tex_coords)).rgb; 
+    phong.specular = vec3(texture(material.specular, tex_coords)).rgb;
     
     vec3 view_dir = normalize(cam_pos - frag_pos);
 
-    vec3 result = CalculateDirLight(dir_light, normal, view_dir, phong_texels, material.shininess);
+    vec3 result = CalculateDirLight(dir_light, normal, view_dir, phong, material.shininess);
 
     for(int pointlight_index = 0; pointlight_index < 4; pointlight_index++)
     {
-        result += CalculatePointLight(pointLights[pointlight_index], normal, frag_pos, view_dir, phong_texels, material.shininess);        
+        result += CalculatePointLight(pointLights[pointlight_index], normal, frag_pos, view_dir, phong, material.shininess);        
     }
 
-    result += CalculateSpotLight(spotlight, normal, frag_pos, view_dir, phong_texels, material.shininess);
+    result += CalculateSpotLight(spotlight, normal, frag_pos, view_dir, phong, material.shininess);
 
-        
+
+    // Gamma correction (?)
+    result = pow(result, vec3(1.0 / 2.2));
     frag_color = vec4(result, 1.0);
 }
-
 #endif
+//-------------------------------------------------------//
+//-------------------END-OF-FRAGMENT---------------------//
+//-------------------------------------------------------//

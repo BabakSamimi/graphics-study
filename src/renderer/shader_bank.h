@@ -30,20 +30,20 @@ void register_shader(char* path, char* name);
 bool init_shader_bank();
 bool reload_shader_bank();
 
-void use_program_name(unsigned char* program_name);
+void use_program_name(char* program_name);
 void use_program(unsigned int program);
 
-void query_program(unsigned int* program, unsigned char* program_name);
+void query_program(unsigned int* program, char* program_name);
 void get_active_program(unsigned int* program);
     
-void set_float(unsigned char* name, float value);
-void set_int(unsigned char* name, int value);
+void set_float(char* name, float value);
+void set_int(char* name, int value);
 
-void set_vec4f(unsigned char* name, float a, float b, float c, float d);
-void set_vec3f(unsigned char* name, float a, float b, float c);
-void set_vec2f(unsigned char* name, float a, float b);
+void set_vec4f(char* name, float a, float b, float c, float d);
+void set_vec3f(char* name, float a, float b, float c);
+void set_vec2f(char* name, float a, float b);
 
-void set_mat4f(unsigned char* name, float* value);
-void set_mat3f(unsigned char* name, float* value);
+void set_mat4f(char* name, float* value);
+void set_mat3f(char* name, float* value);
 
 #endif
