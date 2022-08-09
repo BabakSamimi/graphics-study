@@ -524,8 +524,8 @@ mat3x3 translate_mat3x3(mat3x3 a, vec2 translation)
 {
     mat3x3 result = a;
     
-    result.matrix[6] = translation.x;
-    result.matrix[7] = translation.y;
+    result.matrix[6] += translation.x;
+    result.matrix[7] += translation.y;
 
     return result;
 }
@@ -652,9 +652,9 @@ mat4x4 translate_mat4x4(mat4x4 a, vec3 translation)
 {
     mat4x4 result = a;
     
-    result.matrix[12] = translation.x;
-    result.matrix[13] = translation.y;
-    result.matrix[14] = translation.z;
+    result.matrix[12] += translation.x;
+    result.matrix[13] += translation.y;
+    result.matrix[14] += translation.z;
     
     return result;
 }

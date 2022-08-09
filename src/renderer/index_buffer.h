@@ -1,12 +1,14 @@
 #ifndef INDEX_BUFFER_H
 #define INDEX_BUFFER_H
 
+#include "..\defines.h"
+
 typedef struct {
-    unsigned int renderer_id;
-    unsigned int index_count;
+    u32 renderer_id;
+    u32 index_count;
 } IndexBuffer;
 
-IndexBuffer GenIndexBuf(unsigned int* indices, unsigned int index_count);
+IndexBuffer GenIndexBuf(u32 *indices, u32 index_count);
 
 void BindIndexBuf(IndexBuffer buf);
 void UnBindIndexBuf(void);

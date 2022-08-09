@@ -1,7 +1,7 @@
 #include "index_buffer.h"
 #include "glad/glad.h"
 
-IndexBuffer GenIndexBuf(unsigned int* indices, unsigned int index_count)
+IndexBuffer GenIndexBuf(u32 *indices, u32 index_count)
 {
     IndexBuffer buf;
     buf.index_count = index_count;

@@ -1,6 +1,6 @@
 #include "camera.h"
 
-void init_camera(Camera* cam, vec3 pos, vec3 dir, vec3 up, float fov, float speed)
+void create_camera(Camera* cam, vec3 pos, vec3 dir, vec3 up, float fov, float speed)
 {
     cam->position = pos;
     cam->direction = dir;

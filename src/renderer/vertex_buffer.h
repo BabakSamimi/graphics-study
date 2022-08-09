@@ -1,11 +1,13 @@
 #ifndef VERTEX_BUFFER_H
 #define VERTEX_BUFFER_H
 
+#include "..\defines.h"
+
 typedef struct {
-    unsigned int renderer_id;
+    u32 renderer_id;
 } VertexBuffer;
 
-VertexBuffer GenVertBuf(void* data, unsigned int size);
+VertexBuffer GenVertBuf(void *data, u32 size);
 
 void BindVertBuf(VertexBuffer buf);
 void UnBindVertBuf(void);

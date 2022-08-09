@@ -1,29 +1,31 @@
 #ifndef VERTEX_ARRAY_H
 #define VERTEX_ARRAY_H
 
+#include "..\defines.h"
+
 typedef struct {
-    unsigned int count;
-    unsigned int type;
-    unsigned int normalized;
+    u32 count;
+    u32 type;
+    u32 normalized;
 } VertexAttribute;
 
 typedef struct {
     VertexAttribute* attributes;
-    unsigned int count; // attribute count
-    unsigned int stride;
+    u32 count; // attribute count
+    u32 stride;
 } VertexLayout;
 
 typedef struct {
-    unsigned int renderer_id;
+    u32 renderer_id;
     VertexLayout layout; // Is it neccessary to store it?
 } VertexArray;
 
 VertexArray GenVertArr();
 
 void VertLayoutPush(VertexLayout *layout,
-                    unsigned int count,                    
-                    unsigned int type,
-                    unsigned int normalized);
+                    u32 count,                    
+                    u32 type,
+                    u32 normalized);
 
 void VABindLayout(VertexArray *va,
                   VertexLayout vl);

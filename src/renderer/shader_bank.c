@@ -4,23 +4,23 @@
 #include "shader_bank.h"
 #include "..\memory.h"
 
-static const char* version_define = "#version 460 core\n";
-static const char* vertex_define = "#define VERTEX_SHADER\n";
-static const char* fragment_define = "#define FRAGMENT_SHADER\n";
+module const u8 *version_define = "#version 460 core\n";
+module const u8 *vertex_define = "#define VERTEX_SHADER\n";
+module const u8 *fragment_define = "#define FRAGMENT_SHADER\n";
 
 #define SHADER_BUFFER_SIZE (8*1024)
 #define SHADER_LOG_SIZE (1*1024)
 // #define DEBUG_PRINT_SOURCE
 
 /* Buffer for shader source code, used for compiling shaders */
-static unsigned char* shader_src;
-static MemoryRegion mem_reg;
+module u8 *shader_src;
+module MemoryRegion mem_reg;
 
 ShaderBank shaders = {0};
 
-static int FILE_size(FILE* fp)
+module int FILE_size(FILE* fp)
 {
-    int result;
+    s32 result;
     
     fseek(fp, 0, SEEK_END);
     result = ftell(fp);
@@ -41,9 +41,9 @@ bool init_shader_bank()
 {
     InitRegion(&mem_reg, ALLOC_MEM(10*KB(64)), 10*KB(64));
 
-    shader_src = (unsigned char*)       SliceRegion16(&mem_reg, SHADER_BUFFER_SIZE * sizeof(unsigned char));
+    shader_src = (u8*)       SliceRegion16(&mem_reg, SHADER_BUFFER_SIZE * sizeof(unsigned char));
     shaders.mod = (time_t*)             SliceRegion16(&mem_reg, shaders.programs_count * sizeof(time_t));
-    shaders.programs = (unsigned int*)  SliceRegion16(&mem_reg, shaders.programs_count * sizeof(unsigned int));
+    shaders.programs = (GLuint*)  SliceRegion16(&mem_reg, shaders.programs_count * sizeof(unsigned int));
     shaders.active_program_index = 0;
     
     // Populate shader bank
@@ -55,13 +55,13 @@ bool reload_shader_bank()
 {
     bool status = true;
 
-    for(unsigned char idx = 0;
+    for(u8 idx = 0;
         idx < shaders.programs_count;
         idx++)
     {
         
-        unsigned char* shader_path = shaders.paths[idx][0];     
-        FILE* fp = fopen(shader_path, "rb");
+        u8 *shader_path = shaders.paths[idx][0];     
+        FILE *fp = fopen(shader_path, "rb");
 
         if(!fp)
         {
@@ -72,9 +72,9 @@ bool reload_shader_bank()
         }
 
         struct stat fstat;
-        int file_size;
+        s32 file_size;
         size_t bytes_read;
-        unsigned int shader_changed = 0;
+        u32 shader_changed = 0;
             
         // save last modification
         stat(shader_path, &fstat);
@@ -118,21 +118,21 @@ bool reload_shader_bank()
         // TODO: Carve out the source code for the different shaders out of shader_src
         // This can yield to more readable error printing when printing source code to
         // the console.
-        const unsigned char* const vertex_src[3] = { version_define, vertex_define, shader_src };
+        const u8 *const vertex_src[3] = { version_define, vertex_define, shader_src };
         const int v_length[3] = { strlen(version_define), strlen(vertex_define), file_size };
         
-        const unsigned char* const fragment_src[3] = { version_define, fragment_define, shader_src };
+        const u8 *const fragment_src[3] = { version_define, fragment_define, shader_src };
         const int f_length[3] = { strlen(version_define), strlen(fragment_define), file_size };
         
-        char shader_log[SHADER_LOG_SIZE];
+        u8 shader_log[SHADER_LOG_SIZE];
                 
         /* Compile vertex shader */
-        unsigned int vertex_id = glCreateShader(GL_VERTEX_SHADER);
+        GLuint vertex_id = glCreateShader(GL_VERTEX_SHADER);
         
         glShaderSource(vertex_id, 3, vertex_src, v_length);
         glCompileShader(vertex_id);
 
-        int vertex_compiled = 0;
+        s32 vertex_compiled = 0;
         glGetShaderiv(vertex_id, GL_COMPILE_STATUS, &vertex_compiled);        
         if(!vertex_compiled)
         {
@@ -146,12 +146,12 @@ bool reload_shader_bank()
         }        
          
         /* Compile fragment shader */
-        unsigned int fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
+        GLuint fragment_id = glCreateShader(GL_FRAGMENT_SHADER);        
         
         glShaderSource(fragment_id, 3, fragment_src, f_length);
         glCompileShader(fragment_id);
         
-        int fragment_compiled = 0;
+        s32 fragment_compiled = 0;
         glGetShaderiv(fragment_id, GL_COMPILE_STATUS, &fragment_compiled);
         if(!fragment_compiled)
         {
@@ -173,12 +173,12 @@ bool reload_shader_bank()
             continue;
         }
                 
-        unsigned int shader_program = glCreateProgram();
+        GLuint shader_program = glCreateProgram();
         glAttachShader(shader_program, vertex_id);
         glAttachShader(shader_program, fragment_id);
         glLinkProgram(shader_program);
                 
-        int program_linked;
+        s32 program_linked;
         glGetProgramiv(shader_program, GL_LINK_STATUS, &program_linked);
         
         if(program_linked)
@@ -200,7 +200,7 @@ bool reload_shader_bank()
     return status;    
 }
 
-void use_program_name(char* program_name)
+void use_program_name(u8 *program_name)
 {
     /* Naive */
     for(unsigned index = 0; index < shaders.programs_count; index++)
@@ -215,10 +215,10 @@ void use_program_name(char* program_name)
 
 }
 
-void use_program(unsigned int program)
+void use_program(GLuint program)
 {
 
-    for(unsigned index = 0; index < shaders.programs_count; index++)
+    for(s32 index = 0; index < shaders.programs_count; index++)
     {
         if(program == shaders.programs[index])
         {
@@ -231,7 +231,7 @@ void use_program(unsigned int program)
     
 }
 
-void query_program(unsigned int* program, char* program_name)
+void query_program(GLuint *program, u8 *program_name)
 {
 
     /* Naive */
@@ -247,42 +247,42 @@ void query_program(unsigned int* program, char* program_name)
     
 }
 
-void get_active_program(unsigned int* program)
+void get_active_program(GLuint *program)
 {
     *program = shaders.programs[shaders.active_program_index];
 }
 
-void set_float(char* name, float val)
+void set_float(u8 *name, float val)
 {
     glUniform1f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val);
 }
 
-void set_int(char* name, int val)
+void set_int(u8 *name, int val)
 {
     glUniform1i(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), val);    
 }
 
-void set_vec4f(char* name, float a, float b, float c, float d)
+void set_vec4f(u8 *name, vec4 v)
 {
-    glUniform4f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b, c, d);    
+    glUniform4f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), v.x, v.y, v.z, v.w);    
 }
 
-void set_vec3f(char* name, float a, float b, float c)
+void set_vec3f(u8 *name, vec3 v)
 {
-    glUniform3f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b, c);        
+    glUniform3f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), v.x, v.y, v.z);        
 }
 
-void set_vec2f(char* name, float a, float b)
+void set_vec2f(u8 *name, vec2 v)
 {
-    glUniform2f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), a, b);        
+    glUniform2f(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), v.x, v.y);        
 }
 
-void set_mat4f(char* name, float* val)
+void set_mat4f(u8 *name, float* val)
 {
     glUniformMatrix4fv(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), 1, GL_FALSE, val);
 }
 
-void set_mat3f(char* name, float* val)
+void set_mat3f(u8 *name, float* val)
 {
     glUniformMatrix3fv(glGetUniformLocation(shaders.programs[shaders.active_program_index], name), 1, GL_FALSE, val);
 }

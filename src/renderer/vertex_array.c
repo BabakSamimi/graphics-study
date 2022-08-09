@@ -5,7 +5,7 @@ VertexArray GenVertArr()
 {
     VertexArray result;
     
-    unsigned int VAO;
+    GLuint VAO;
     glGenVertexArrays(1, &VAO);    
     glBindVertexArray(VAO);
 
@@ -16,11 +16,11 @@ VertexArray GenVertArr()
 
 // Vertex Array operations
 
-// Bind the layout of a vertex buffer to this vertex array
+// Push an attribute to the layout
 void VertLayoutPush(VertexLayout *layout,
-                    unsigned int count,                    
-                    unsigned int type,
-                    unsigned int normalized)
+                    u32 count,                    
+                    u32 type,
+                    u32 normalized)
 {
     VertexAttribute *attrib = &layout->attributes[layout->count];
     
@@ -31,15 +31,15 @@ void VertLayoutPush(VertexLayout *layout,
     switch(type)
     {
         case GL_FLOAT:
-            layout->stride += count * sizeof(float);
+            layout->stride += count * sizeof(f32);
             break;
             
         case GL_UNSIGNED_INT:
-            layout->stride += count * sizeof(unsigned int);
+            layout->stride += count * sizeof(u32);
             break;
 
         case GL_UNSIGNED_BYTE:
-            layout->stride += count * sizeof(unsigned char);
+            layout->stride += count * sizeof(u8);
             break;
             
         default:
@@ -50,13 +50,14 @@ void VertLayoutPush(VertexLayout *layout,
     layout->count++;
 }
 
+// Associate a vertex array with a vertex layout
 void VABindLayout(VertexArray *va,
                   VertexLayout vl)
 {
     va->layout = vl;
     size_t offset = 0;
     
-    for(unsigned int attrib_idx = 0; attrib_idx < vl.count; attrib_idx++)
+    for(u32 attrib_idx = 0; attrib_idx < vl.count; attrib_idx++)
     {
         VertexAttribute attribute = vl.attributes[attrib_idx];
         
@@ -68,15 +69,15 @@ void VABindLayout(VertexArray *va,
         switch(attribute.type)
         {
             case GL_FLOAT:
-                offset += attribute.count * sizeof(float);
+                offset += attribute.count * sizeof(f32);
                 break;
             
             case GL_UNSIGNED_INT:
-                offset += attribute.count * sizeof(unsigned int);
+                offset += attribute.count * sizeof(u32);
                 break;
 
             case GL_UNSIGNED_BYTE:
-                offset += attribute.count * sizeof(unsigned char);
+                offset += attribute.count * sizeof(u8);
                 break;
             
             default:

@@ -2,7 +2,7 @@
 #define CUBE_H
 
 // Cube with vertices, normals and texture coordinates
-static float vertices[] = {
+static float cube_vertices[] = {
     // positions            // normals              // texture coords
     -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,  	0.0f,  0.0f,
     0.5f, -0.5f, -0.5f,     0.0f,  0.0f, -1.0f,  	1.0f,  0.0f,

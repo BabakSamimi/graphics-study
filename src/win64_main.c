@@ -4,11 +4,10 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #include <stdio.h> // printf
 #include <stdbool.h>
 #include <math.h> // sin
+#include <locale.h>
 
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
-
-#define ArrayCount(A) (sizeof((A)) / sizeof((A)[0]))
 
 /*
   TODO:
@@ -18,56 +17,28 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 */
 
 // app code
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb/stb_image.h"
 
 #define GFX_MATH_IMPL
 #include "gfx_math.h"
 
+#include "win64_main.h"
+
 #include "renderer/renderer.h"
 #include "renderer/shader_bank.h"
-#include "renderer/camera.h"
-#include "renderer/vertex_buffer.h"
-#include "renderer/vertex_array.h"
-#include "renderer/cube.h"
 
 #include "memory.h"
 
 #define PRESSED(KEY) (glfwGetKey(window, KEY) == GLFW_PRESS)
 
-typedef struct
-{
-    float target_frame_ms;
-    float delta_time;
-    float last_frame;
-    float fov;
-    
-    double mouse_x;
-    double mouse_last_x;
-    double mouse_y;
-    double mouse_last_y;
-
-    float sensitivity;
-
-    int camera_control;
-
-    int reloading_shaders;
-    int wireframe_on;
-    
-} AppState;
-
-Camera cam;
-AppState state;
+AppState app_state;
 extern ShaderBank shaders;
-int window_width = 1280;
-int window_height = 720;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0,0, width, height);
 }
 
-static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+module void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if(action == GLFW_PRESS)
     {
@@ -76,7 +47,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
             case GLFW_KEY_ESCAPE:
             {
                 
-                if(state.camera_control)
+                if(app_state.camera_control)
                 {
                     // Disable fps control and show cursor
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);  
@@ -84,20 +55,20 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
                 else
                 {
                     // Enable fps control and disable cursor
-                    glfwGetCursorPos(window, &state.mouse_last_x, &state.mouse_last_y);
+                    glfwGetCursorPos(window, &app_state.mouse_last_x, &app_state.mouse_last_y);
             
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
                 }
         
-                state.camera_control = !state.camera_control;
+                app_state.camera_control = !app_state.camera_control;
                 
                 break;
             }
             case GLFW_KEY_R:
             {
-                if(!state.reloading_shaders)
+                if(!app_state.reloading_shaders)
                 {
-                    state.reloading_shaders = 1;
+                    app_state.reloading_shaders = 1;
         
                     if(reload_shader_bank())
                     {
@@ -106,16 +77,16 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
                     else
                         printf("Shader reloading failed\n");
         
-                    state.reloading_shaders = 0;                     
+                    app_state.reloading_shaders = 0;                     
                 }
 
                 break;
             }
             case GLFW_KEY_1:
             {
-                state.wireframe_on = !state.wireframe_on;
+                app_state.wireframe_on = !app_state.wireframe_on;
                 
-                if(state.wireframe_on)
+                if(app_state.wireframe_on)
                     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
                 else
                     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -129,58 +100,18 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 
 void scroll_callback(GLFWwindow* window, double x_offset, double y_offset)
 {
-    state.fov -= (float)y_offset;
-    if (state.fov < 1.0f)
-        state.fov = 1.0f;
-    if (state.fov > 120.0f)
-        state.fov = 120.0f;
+    app_state.fov -= (float)y_offset;
+    if (app_state.fov < 1.0f)
+        app_state.fov = 1.0f;
+    if (app_state.fov > 120.0f)
+        app_state.fov = 120.0f;
 
-    printf("New FOV Value: %.2f\n", state.fov);
+    printf("New FOV Value: %.2f\n", app_state.fov);
 }
 
-unsigned int load_texture(char* path, int flipped)
+s32 main(void)
 {
-    // Setup Texture
-    unsigned int texture;
-    glGenTextures(1, &texture);
-
-    // Load our texture
-    int tex_width, tex_height, nr_channels;
-    unsigned char* tex_data = stbi_load(path, &tex_width, &tex_height, &nr_channels, 0);
     
-    if(tex_data)
-    {
-        GLenum format;
-        
-        if (nr_channels == 3)
-            format = GL_RGB;
-        else if (nr_channels == 4)
-            format = GL_RGBA;
-
-        glBindTexture(GL_TEXTURE_2D, texture);
-        
-        glTexImage2D(GL_TEXTURE_2D, 0, format, tex_width, tex_height, 0, format, GL_UNSIGNED_BYTE, tex_data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-        
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        
-        glBindTexture(GL_TEXTURE_2D, 0);    
-        stbi_set_flip_vertically_on_load(flipped); // this image starts at top left            
-        stbi_image_free(tex_data);
-        
-        printf("Loaded texture: %s\n", path);
-    }
-    else printf("Texture was not loaded.\n");
-    
-    return texture;
-}
-
-
-int main(void)
-{
     GLFWwindow* window;
     
 #if DEBUG
@@ -200,7 +131,10 @@ int main(void)
 #endif
     
     // Create a window and its OpenGL context
-    window = glfwCreateWindow(window_width, window_height, "graphics!", NULL, NULL);
+    app_state.window_width = 1280;
+    app_state.window_height = 720;
+    
+    window = glfwCreateWindow(app_state.window_width, app_state.window_height, "graphics!", NULL, NULL);
 	
 	if (!window)
     {
@@ -221,7 +155,7 @@ int main(void)
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    RenderInit(window_width, window_height);
+    render_init();
 
     // Print status
     {            
@@ -230,193 +164,58 @@ int main(void)
         int minor_ver = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR);
         printf("OpenGL version %d.%d\n", major_ver, minor_ver);        
     }        
+        
+    app_state.target_frame_ms = 1000.0f * (1.0f / 60.0f);
+    app_state.delta_time = 0.0f;
+    app_state.last_time = 0.0f;
+    app_state.fov = 90.0f;
 
-    // unit square, first quadrant of NDC
-    float quad_vert[] = {
-        0.0f, 1.0f, 0.0f, // (0, 1)
-        1.0f, 0.0f, 0.0f, // (1, 0)
+    app_state.mouse_x = 0.0f;
+    app_state.mouse_y = 0.0f;
+    app_state.mouse_last_x = (float)app_state.window_width / 2.0f;
+    app_state.mouse_last_y = (float)app_state.window_height / 2.0f;
 
-        0.0f, 0.0f, 0.0f, // (0, 0)       
-        1.0f, 1.0f, 0.0f, // (1, 1)
-    };
-
-    unsigned int quad_indices[] = {
-        0, 1, 2,
-        0, 1, 3,
-    };
-    
-    // Index Buffer
-    unsigned int indices[] = {  // note that we start from 0!
-        0, 1, 3,   // first triangle
-        1, 2, 3    // second triangle
-    };
-
-    // Compile shaders
-    register_shader("..\\src\\shaders\\cube.glsl", "cube");
-    register_shader("..\\src\\shaders\\light.glsl", "light");
-    register_shader("..\\src\\shaders\\ui.glsl", "ui");
-    
-    if(!init_shader_bank())
-    {
-        printf("Failed init of shader bank!\n");
-        exit(0);
-    }
-
-    MemoryRegion region1;
-    InitRegion(&region1, ALLOC_MEM(MB(1)), MB(1));
-
-    VertexBuffer cube_vb = GenVertBuf(vertices, sizeof(vertices));
-
-    // Our primary VA for cube rendering with phong lightning
-    VertexArray va = GenVertArr();        
-    VertexLayout va_layout = {0};
-    
-    va_layout.attributes = (VertexAttribute*)SliceRegion16(&region1, 3 * sizeof(VertexAttribute));
-    
-    VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE);
-    VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE);
-    VertLayoutPush(&va_layout, 2, GL_FLOAT, GL_FALSE);
-
-    BindVertArr(va);               
-    BindVertBuf(cube_vb);
-    VABindLayout(&va, va_layout);
-    
-    UnbindVertArr();
-    UnbindVertBuf();
-    
-    // Setup light cube
-    VertexArray light_va = GenVertArr();    
-    VertexLayout light_layout = {0};
-
-    
-    //light_layout.attributes = (VertexAttribute*)SliceRegion16(&region1, 1 * sizeof(VertexAttribute));
-    
-    //VertLayoutPush(&light_layout, 3, GL_FLOAT, GL_FALSE);
-    
-    BindVertArr(light_va);    
-    BindVertBuf(cube_vb);
-    VABindLayout(&light_va, va_layout);    
-
-    UnbindVertArr();
-    UnbindVertBuf();
-
-#if 0
-    // UI 
-    glGenVertexArrays(1, &ui_VAO);
-    glBindVertexArray(ui_VAO);
-
-    glGenBuffers(1, &ui_VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, ui_VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vert), quad_vert, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &ui_EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ui_EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_indices), quad_indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glBindVertexArray(0);    
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);      
-
-#endif
-    
-    /* Setup EBO
-    glGenBuffers(1, &EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);    
-
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    */
-
-    unsigned int diffuse_map = load_texture("assets\\container2.png", 1);
-    unsigned int specular_map = load_texture("assets\\container2_specular.png", 1);
-    unsigned int emission_map = load_texture("assets\\container2_emission.jpg", 0);
-
-    // Update texture units in our fragment shader
-    use_program_name("cube");
-    set_int("material.diffuse", 0);
-    set_int("material.specular", 1);
-    set_int("material.emission", 2);
-    
-    state.target_frame_ms = 1000.0f * (1.0f / 60.0f);
-    state.delta_time = 0.0f;
-    state.last_frame = 0.0f;
-    state.fov = 90.0f;
-
-    state.mouse_x = 0.0f;
-    state.mouse_y = 0.0f;
-    state.mouse_last_x = (float)window_width / 2.0f;
-    state.mouse_last_y = (float)window_height / 2.0f;
-
-    state.sensitivity = 0.1f;
-    state.camera_control = 1;
-    state.wireframe_on = 0;
+    app_state.sensitivity = 0.1f;
+    app_state.camera_control = 1;
+    app_state.wireframe_on = 0;
 
     vec3 cam_pos, cam_dir, cam_up;
-
+    
+    Camera cam;
     cam_pos = create_vec3(0.0f, 0.0f, 5.0f);
     cam_dir = create_vec3(0.0f, 0.0f, -1.0f);
     cam_up = create_vec3(0.0f, 1.0f, 0.0f);
         
-    init_camera(&cam, cam_pos, cam_dir, cam_up, state.fov, 6.0f);        
-
-    float padding = 2.0f;
-    vec3 box_positions[6] = {
-        {0}, {-1.0f - padding, 0.0f, 0.0f}, {1.0f + padding, 0.0f, 0.0f},
-        {0.0f, 1.0f + padding, 0.0f},
-        {0.0f, 0.0f, -1.0f - padding}, {0.0f, 0.0f, 1.0f + padding}
-    };
-
-    vec3 pointlight_positions[4][2] = {
-        {
-            { 4.0f, 4.0f, 0.0f }, // pos
-            { 1.0f, 1.0f, 0.0f }  // color
-        },
-        {
-            { -4.0f, 4.0f, 0.0f },
-            { 1.0f, 0.0f, 0.0f }
-        },
-        {
-            { 0.0f, 4.0f, 4.0f },
-            { 0.0f, 1.0f, 0.0f }
-        },
-        {
-            { 0.0f, 4.0f, -4.0f },
-            { 0.0f, 0.0f, 1.0f }
-        },        
-    };
-
-    vec3 light_pos, light_color;
-    light_pos = create_vec3(.0f, 0.0f, 0.0f);
-    light_color = create_vec3(0.0f, 1.0f, 1.0f);
+    create_camera(&cam, cam_pos, cam_dir, cam_up, app_state.fov, 6.0f);        
     
-    double reload_time = glfwGetTime();
-    int frames_elapsed = 0;
+    f64 reload_time = glfwGetTime();
+    s32 frames_elapsed = 0;
         
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
 
-        float current_frame = glfwGetTime();
-
-        if(state.camera_control)
-        {
-            glfwGetCursorPos(window, &state.mouse_x, &state.mouse_y);
+        f32 start_time = glfwGetTime();
         
-            float x_offset = (state.mouse_x - state.mouse_last_x) * state.sensitivity;
-            float y_offset = (state.mouse_last_y - state.mouse_y) * state.sensitivity;
+        /* Poll for and process events */
+        glfwPollEvents();
+        
+        if(app_state.camera_control)
+        {
+            glfwGetCursorPos(window, &app_state.mouse_x, &app_state.mouse_y);
+        
+            f32 x_offset = (app_state.mouse_x - app_state.mouse_last_x) * app_state.sensitivity;
+            f32 y_offset = (app_state.mouse_last_y - app_state.mouse_y) * app_state.sensitivity;
 
             update_camera_transform(&cam, x_offset, y_offset);
 
-            state.mouse_last_x = state.mouse_x;
-            state.mouse_last_y = state.mouse_y;            
-            cam.fov = state.fov;
+            app_state.mouse_last_x = app_state.mouse_x;
+            app_state.mouse_last_y = app_state.mouse_y;            
+            cam.fov = app_state.fov;
 
         }            
         
-        float walking_speed = cam.speed * state.delta_time;                        
+        f32 walking_speed = cam.speed * app_state.delta_time;
         if(PRESSED(GLFW_KEY_W))
             move_camera(&cam, FORWARD, walking_speed);            
         if(PRESSED(GLFW_KEY_S))
@@ -425,231 +224,17 @@ int main(void)
             move_camera(&cam, LEFT, walking_speed*0.8f);            
         if(PRESSED(GLFW_KEY_D))
             move_camera(&cam, RIGHT, -walking_speed*0.8f);
-        
-        
-        /* Render starts here */
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        /* Model-view-projection */
-        mat4x4 model, view, projection;
-        vec3 rotation_axis, trans_vec;
-
-        // Calculate perspective projection matrix
-        projection = perspective(RADIANS(cam.fov), (float)window_width/(float)window_height, 0.1f, 100.0f);        
-        
-#if 0
-        /* Translate scene forward */         
-        create_vec3(0.0f, 0.0f, -3.0f);                        
-        view = translate_mat4x4(view, transl_vec);
-#endif
-
-        view = get_camera_view_matrix(&cam);        
-
-        /* Render cube */
-        use_program_name("cube");
-
-        set_mat4f("view", view.matrix);
-        set_mat4f("projection", projection.matrix);                         
-
-        // bind textures
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffuse_map);
-        
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, specular_map);
-
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, emission_map);
-
-        /* Update uniforms  */
-        float time_value = glfwGetTime();
-
-#if 0       
-        light_pos.x = 2.0f * sin(time_value) * cos(time_value);
-        light_pos.y = 2.0f * sin(time_value) * sin(time_value);
-        light_pos.z = -2.0f; //2.0f * cos(time_value);
-
-        light_color.x = (sin(time_value) + 1) / 2;
-        light_color.y = (cos(time_value) + 1) / 2;
-        light_color.z = 0.7 * ((sin(time_value) + 1) / 2);
-#else
-        light_pos.x = 0.0f;
-        light_pos.y = 1.0f;
-        light_pos.z = 5.0f;
-
-        light_color.x = 1.0f;
-        light_color.y = 1.0f;
-        light_color.z = 1.0f;
-#endif
-        
-        //set_float("u_time", time_value);        
-        set_vec3f("cam_pos", cam.position.x, cam.position.y, cam.position.z);
-
-        set_float("material.shininess", 32.0f);
-
-        //set_vec3f("light.direction", -0.2f, 0.3f, -0.3f);
-        
-        // Set directional light
-        {        
-            set_vec3f("dir_light.direction", cam.direction.x, cam.direction.y, cam.direction.z);
-            set_vec3f("dir_light.phong.ambient", 0.05f, 0.05f, 0.05f);
-            set_vec3f("dir_light.phong.diffuse", 0.1f, 0.1f, 0.1f);
-            set_vec3f("dir_light.phong.specular", 0.5f, 0.5f, 0.5f);
-        }
-        
-        // Set pointlights
-        {
-            vec3 pos = pointlight_positions[0][0];
-            vec3 colors = pointlight_positions[0][1];
-            set_float("pointLights[0].power", 20.0f);
-            set_vec3f("pointLights[0].position", pos.x, pos.y, pos.z);
-            set_vec3f("pointLights[0].phong.ambient", 0.01*colors.x, 0.01*colors.y, 0.01*colors.z);
-            set_vec3f("pointLights[0].phong.diffuse", colors.x, colors.y, colors.z);
-            set_vec3f("pointLights[0].phong.specular", colors.x, colors.y, colors.z);
-
-            pos = pointlight_positions[1][0];
-            colors = pointlight_positions[1][1];
-            set_float("pointLights[1].power", 2.0f + 5.0f);
-            set_vec3f("pointLights[1].position", pos.x, pos.y, pos.z);
-            set_vec3f("pointLights[1].phong.ambient", 0.01*colors.x, 0.01*colors.y, 0.01*colors.z);
-            set_vec3f("pointLights[1].phong.diffuse", colors.x, colors.y, colors.z);
-            set_vec3f("pointLights[1].phong.specular", colors.x, colors.y, colors.z);
-            
-            pos = pointlight_positions[2][0];
-            colors = pointlight_positions[2][1];
-            set_float("pointLights[2].power", 4.0f + 5.0f);
-            set_vec3f("pointLights[2].position", pos.x, pos.y, pos.z);
-            set_vec3f("pointLights[2].phong.ambient", 0.01*colors.x, 0.01*colors.y, 0.01*colors.z);
-            set_vec3f("pointLights[2].phong.diffuse", colors.x, colors.y, colors.z);
-            set_vec3f("pointLights[2].phong.specular", colors.x, colors.y, colors.z);
-
-            pos = pointlight_positions[3][0];
-            colors = pointlight_positions[3][1];
-            set_float("pointLights[3].power", 20.0f + 5.0f);
-            set_vec3f("pointLights[3].position", pos.x, pos.y, pos.z);
-            set_vec3f("pointLights[3].phong.ambient", 0.01*colors.x, 0.01*colors.y, 0.01*colors.z);
-            set_vec3f("pointLights[3].phong.diffuse", colors.x, colors.y, colors.z);
-            set_vec3f("pointLights[3].phong.specular", colors.x, colors.y, colors.z);
-            
-        }
-        
-        // Set spotlight
-        
-        {
-
-            set_vec3f("spotlight.position", cam.position.x, cam.position.y, cam.position.z);
-            set_vec3f("spotlight.direction", cam.direction.x, cam.direction.y, cam.direction.z);            
-            set_float("spotlight.power", 15.0f);
-            set_float("spotlight.cutoff", (float)cos(RADIANS(15.0f)));
-            set_float("spotlight.outer_cutoff", (float)cos(RADIANS(18.0f)));
-
-            float intensity = 0.1f;
-            set_vec3f("spotlight.phong.ambient", 0.0f, 0.0f, 0.0f);
-            set_vec3f("spotlight.phong.diffuse", 1.0f, 1.0f, 1.0f); // color of light
-            set_vec3f("spotlight.phong.specular", 1.0f, 1.0f, 1.0f);        
-        }
-        
-        // Rotate in model space        
-               //create_vec3(&rotation_axis, 1.0f, 0.0f, 0.0f);
-               //rotate_mat4x4(model, (float)sin(0.25 * (float)glfwGetTime() * RADIANS(90.0f)), &rotation_axis);               
-        
-#if 1
-        for(unsigned int box_index = 0; box_index < 6; box_index++)
-        {
-            model = create_diag_mat4x4(1.0f);
-            rotation_axis = create_vec3(0.0f, 1.0f, 0.0f);
-            
-            model = scale_mat4x4(model, 1.0f, 2.0f, 1.0f);
-            model = rotate_mat4x4(model, (float)sin(0.50 * (float)glfwGetTime() * RADIANS(90.0f)), rotation_axis);
-            model = translate_mat4x4(model, box_positions[box_index]);
-            
-            set_mat4f("model", model.matrix);
-            
-            BindVertArr(va);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-            
-        }
-#else
-        model = create_diag_mat4x4(1.0f);
-        set_mat4f("model", model.matrix);
-        
-        /* Draw cube */
-        BindVertArr(va);                       
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw using our index buffer
-#endif
-        
-        // Render light cubes
-#if 1       
-        use_program_name("light");        
-
-        for(int i = 0; i < 4; i++)
-        {
-            vec3 pos = pointlight_positions[i][0];
-            vec3 color = pointlight_positions[i][1];
-            vec3 rotation_axis = create_vec3(0.0f, 1.0f, 0.0f);
-            model = create_diag_mat4x4(1.0f);
-            
-            model = scale_mat4x4(model, 3.0f, 0.2f, 0.2f);            
-            model = rotate_mat4x4(model, (float)glfwGetTime(), rotation_axis);
-            model = translate_mat4x4(model, pos);
-
-            set_vec3f("light_color", color.x, color.y, color.z);
-
-            set_mat4f("model", model.matrix);
-            set_mat4f("view", view.matrix);
-            set_mat4f("projection", projection.matrix);
-        
-            BindVertArr(light_va);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }    
-                       
-#endif
-        
-#if 0        
-        // UI
-        {        
-            use_program_name("ui");
-        
-            mat4 ortho_proj;
-
-            create_diag_m4(model, 1.0f);
-            create_diag_m4(ortho_proj, 1.0f);
-            ortho(ortho_proj, 0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f);
-
-            // Size and scaling
-            float rect_width = 500.0f;
-            float rect_height = 200.0f;            
-
-            float rect_width_ndc = rect_width / window_width;
-            float rect_height_ndc = rect_height / window_height;        
-
-            scale_mat4x4(model, rect_width_ndc, rect_height_ndc, 0.0f);
-
-            // Positioning
-            vec3 rect_pos = create_vec3(0.5f - rect_width_ndc * 0.5f, 0.5f - rect_height_ndc * 0.5f, 0.0f);
-
-            model = translate_mat4x4(model, &rect_pos);
-
-            set_mat4f("model", model.matrix);
-            set_mat4f("projection", ortho_proj.matrix);
-            set_vec3f("color", 0.0f, 255.0f, 0.0f);
-            set_float("scale", 0.5f);
-        
-            glBindVertexArray(ui_VAO);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        }
-#endif        
+        render(app_state.delta_time*1000.0f, &cam);
         
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
-		
-        /* Poll for and process events */
-        glfwPollEvents();
         
-        double end_time = glfwGetTime();
-        double elapsed = end_time - reload_time;
+        app_state.delta_time = start_time - app_state.last_time;    
+        app_state.last_time = start_time;
+        
+        f64 end_time = glfwGetTime();
+        f64 elapsed = end_time - reload_time;
         
         if(elapsed >= 1.0f)
         {
@@ -657,14 +242,12 @@ int main(void)
             reload_time = end_time;
         }
         
-        state.delta_time = current_frame - state.last_frame;
-        state.last_frame = current_frame;
-
-        double work_time = state.delta_time*1000.0f;
+        f64 work_time = app_state.delta_time*1000.0f;
         // printf("Frame work time: %0.4f ms\n", work_time);
-        if(work_time > state.target_frame_ms)
+        
+        if(work_time > app_state.target_frame_ms)
         {
-            /* Insert sleep function here when not using vsync */
+            // Insert sleep function here
         }
 
     }

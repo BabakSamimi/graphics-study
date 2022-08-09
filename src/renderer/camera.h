@@ -21,7 +21,7 @@ typedef struct
     
 } Camera;
 
-void init_camera(Camera* cam, vec3 pos, vec3 dir, vec3 up, float fov, float speed);
+void create_camera(Camera* cam, vec3 pos, vec3 dir, vec3 up, float fov, float speed);
 
 void update_camera_transform(Camera* cam, float x_offset, float y_offset);
 void move_camera(Camera* cam, WalkingDirection dir_sign, float speed);
