@@ -66,7 +66,7 @@ int compare_vec3    (vec3 a, vec3 b);
 //----------------------
 // VEC4
 //----------------------
-vec4 init_vec4      (float x, float y, float z, float w);
+vec4 create_vec4      (float x, float y, float z, float w);
 vec4 copy_vec4      (vec4 a);
 
 vec4 add_vec4       (vec4 a, vec4 b);
@@ -332,7 +332,7 @@ int compare_vec3(vec3 a, vec3 b)
 //----------------------
 // VEC4
 //----------------------
-vec4 init_vec4(float x, float y, float z, float w)
+vec4 create_vec4(float x, float y, float z, float w)
 {
     vec4 result;
     result.x = x;

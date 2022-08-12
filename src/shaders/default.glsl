@@ -22,6 +22,7 @@ void main()
 in vec2 tex_coord;
 out vec4 final_color;
 
+uniform vec4 diffuse;
 //uniform sampler2D diffuse_map0;
 //uniform sampler2D specular_map0;
 
@@ -35,7 +36,7 @@ void main()
     final_color = mix(diffuse, specular, 1.0); //texture(texture1, tex_coord) * vec4(vertex_color*modulating_value, 1.0);
     */
 
-    final_color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    final_color = diffuse;
         
 }
 

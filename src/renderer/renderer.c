@@ -35,11 +35,17 @@ typedef struct {
 } Texture;
 
 typedef struct {
+    vec4 diffuse, specular, ambient;
+    float shine_factor;
+} Material;
+
+typedef struct {
     Vertex  *vertices;
     u32     *indices;
+    
     Texture *textures;
-
     u32 vertex_count, index_count, texture_count;
+    Material material;
 
     VertexArray va;
 } Mesh;
@@ -160,46 +166,53 @@ Mesh CreateMeshFromAssimp(struct aiMesh *mesh, const struct aiScene *scene)
     if(mesh->mMaterialIndex >= 0)
     {
         struct aiMaterial *mat = scene->mMaterials[mesh->mMaterialIndex];
-        if(mat)
+
+        u32 diffuse_map_count = aiGetMaterialTextureCount(mat, aiTextureType_DIFFUSE);
+        u32 specular_map_count = aiGetMaterialTextureCount(mat, aiTextureType_SPECULAR);
+        u32 color_count = aiGetMaterialTextureCount(mat, aiTextureType_BASE_COLOR);
+
+        u32 texture_index = 0;
+        result.texture_count = diffuse_map_count + specular_map_count;
+
+        // @Note: There should be something to allocate, otherwise 'mat' should be null?
+        result.textures = (Texture*)SliceRegion16(&global_mesh_memory, result.texture_count * sizeof(Texture));
+
+        // Load its different textures
+        // Let's start with diffuse maps and specular maps for now
+        for(u32 diffuse_index = 0; diffuse_index < diffuse_map_count; diffuse_index++)
         {
-            u32 diffuse_map_count = aiGetMaterialTextureCount(mat, aiTextureType_DIFFUSE);
-            u32 specular_map_count = aiGetMaterialTextureCount(mat, aiTextureType_DIFFUSE);
-
-            u32 texture_index = 0;
-            result.texture_count = diffuse_map_count + specular_map_count;
-
-            // @Note: There should be something to allocate, otherwise 'mat' should be null?
-            result.textures = (Texture*)SliceRegion16(&global_mesh_memory, result.texture_count * sizeof(Texture));
-
-            // Load its different textures
-            // Let's start with diffuse maps and specular maps for now
-            for(u32 diffuse_index = 0; diffuse_index < diffuse_map_count; diffuse_index++)
-            {
                 
-                struct aiString str;
-                aiGetMaterialTexture(mat, aiTextureType_DIFFUSE, texture_index, &str,
-                                     0,0,0,0,0,0);
-                Texture texture;
-                texture.id = LoadTexture(str.data, true);
-                texture.type = "diffuse";
-                texture.path = str.data;
-                result.textures[texture_index++] = texture;
-            }
-
-            for(u32 specular_index = 0; specular_index < specular_map_count; specular_index++)
-            {
-                
-                struct aiString str;
-                aiGetMaterialTexture(mat, aiTextureType_SPECULAR, texture_index, &str,
-                                     0,0,0,0,0,0);
-                Texture texture;
-                texture.id = LoadTexture(str.data, true);
-                texture.type = "specular";
-                texture.path = str.data;
-                result.textures[texture_index++] = texture;
-            }            
-            
+            struct aiString str;
+            aiGetMaterialTexture(mat, aiTextureType_DIFFUSE, texture_index, &str,
+                                 0,0,0,0,0,0);
+            Texture texture;
+            texture.id = LoadTexture(str.data, true);
+            texture.type = "diffuse";
+            texture.path = str.data;
+            result.textures[texture_index++] = texture;
         }
+
+        for(u32 specular_index = 0; specular_index < specular_map_count; specular_index++)
+        {
+                
+            struct aiString str;
+            aiGetMaterialTexture(mat, aiTextureType_SPECULAR, texture_index, &str,
+                                 0,0,0,0,0,0);
+            Texture texture;
+            texture.id = LoadTexture(str.data, true);
+            texture.type = "specular";
+            texture.path = str.data;
+            result.textures[texture_index++] = texture;
+        }            
+
+        struct aiColor4D v;
+        Material mesh_mat = {0};
+        if(AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE, &v))
+        {
+            mesh_mat.diffuse = create_vec4(v.r, v.g, v.b, v.a);
+        }
+
+        result.material = mesh_mat;
         
     }
     else
@@ -357,7 +370,7 @@ module vec3 pointlight_positions[4][2] = {
     },        
 };
 
-Model cassette;
+Model test_model;
 
 void render_init()
 {
@@ -401,7 +414,7 @@ void render_init()
         InitRegion(&global_mesh_memory, ALLOC_MEM(region_size), region_size);
     }
 
-    cassette = LoadModelFromAssimp("assets\\cassette\\cassette_model_4k.blend");
+    test_model = LoadModelFromAssimp("assets\\concrete_block\\concrete_block.obj");
 
 #if 0    
     VertexLayout va_layout = {0};
@@ -522,9 +535,10 @@ void render(float dt)
     set_mat4f("view", view.matrix);
     set_mat4f("projection", projection.matrix);
 
-    for(u32 mesh_index = 0; mesh_index < cassette.mesh_count; mesh_index++)
+    for(u32 mesh_index = 0; mesh_index < test_model.mesh_count; mesh_index++)
     {
-        Mesh mesh = cassette.meshes[mesh_index];
+        Mesh mesh = test_model.meshes[mesh_index];
+        set_vec4f("diffuse", mesh.material.diffuse);
         VertexArray mesh_va = mesh.va;
         BindVertArr(mesh_va);
         
