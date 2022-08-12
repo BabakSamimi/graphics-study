@@ -1,3 +1,6 @@
+#ifndef DEFINES_H
+#define DEFINES_h
+
 #include <stdint.h>
 
 typedef uint8_t u8;
@@ -17,4 +20,4 @@ typedef double f64;
 
 #define ArrayCount(A) (sizeof((A)) / sizeof((A)[0]))
 
-
+#endif

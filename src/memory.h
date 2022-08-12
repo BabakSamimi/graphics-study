@@ -5,13 +5,13 @@
 #ifndef ALLOC_MEM
 
 #include <stdlib.h>
-#define ALLOC_MEM(x) malloc(x)
+#define ALLOC_MEM(x) malloc((x))
 
 #endif
 
-#define KB(x) ((x)*1024)
-#define MB(x) ((x)*KB(1024))
-#define GB(x) ((x)*MB(1024))
+#define KB(x) (1024 * (x))
+#define MB(x) (1024 * KB((x)))
+#define GB(x) (1024 * MB((x)))
 
 #define IS_POWER_OF_2(x) ( ( (x) & ((x)-1) ) == 0)
 
@@ -21,7 +21,7 @@ typedef struct {
     size_t          used;
 } MemoryRegion;
 
-void InitRegion(MemoryRegion *region, void* buffer, size_t size);
+void InitRegion(MemoryRegion *region, void *buffer, size_t size);
 void *SliceRegion16(MemoryRegion *region, size_t slice_size);
 
 #endif

@@ -1,25 +1,283 @@
-#include "glad/glad.h"
-#include "GLFW/glfw3.h"
-
-#include "shader_bank.h"
 #include "renderer.h"
+#include "render_manager.h"
+#include "vertex_array.h"
+#include "vertex_buffer.h"
+#include "index_buffer.h"
+#include "shader_bank.h"
 
 #include "cube.h"
 
 #include "..\win64_main.h"
 #include "..\defines.h"
 #include "..\gfx_math.h"
-#include "..\memory.h"
+
+#include "GLFW/glfw3.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
+
+#include "assimp/types.h"
+#include "assimp/cimport.h"
+#include "assimp/scene.h"
+#include "assimp/material.h"
+#include "assimp/postprocess.h"
+
+typedef struct {
+    vec3 position;
+    vec3 normal;
+    vec2 tex_coords;    
+} Vertex;
+
+typedef struct {
+    u32 id;
+    u8 *type;
+    u8 *path;
+} Texture;
+
+typedef struct {
+    Vertex  *vertices;
+    u32     *indices;
+    Texture *textures;
+
+    u32 vertex_count, index_count, texture_count;
+
+    VertexArray va;
+} Mesh;
+
+typedef struct {
+    Mesh *meshes;
+    u32 mesh_count;
+    u8 *path;
+} Model;
+
+module vec3 light_pos;
+module vec3 light_color;
+
+// Our primary VA for cube rendering
+module VertexArray va;
+module VertexArray light_va;
+
+module RenderAssets render_assets;
+module MemoryRegion region1;
+module MemoryRegion global_mesh_memory;
+
+RenderManager render_manager;
+extern AppState app_state;
+extern ShaderBank shaders;
+
+u32 LoadTexture(u8 *path, s32 flipped)
+{
+    // Setup Texture
+    GLuint texture;
+    glGenTextures(1, &texture);
+
+    // Load our texture
+    s32 tex_width, tex_height, nr_channels;
+    u8 *tex_data = stbi_load(path, &tex_width, &tex_height, &nr_channels, 0);
+    
+    if(tex_data)
+    {
+        GLenum format;
+        
+        if (nr_channels == 3)
+            format = GL_RGB;
+        else if (nr_channels == 4)
+            format = GL_RGBA;
+
+        // Upload to GPU
+        glBindTexture(GL_TEXTURE_2D, texture);        
+        glTexImage2D(GL_TEXTURE_2D, 0, format, tex_width, tex_height, 0, format, GL_UNSIGNED_BYTE, tex_data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        glBindTexture(GL_TEXTURE_2D, 0);    
+        stbi_set_flip_vertically_on_load(flipped); // this image starts at top left            
+        stbi_image_free(tex_data);
+        
+        printf("Loaded texture: %s\n", path);
+    }
+    else printf("Texture was not loaded.\n");
+    
+    return texture;
+}
+
+Mesh CreateMeshFromAssimp(struct aiMesh *mesh, const struct aiScene *scene)
+{
+    Mesh result = {0};
+    
+    result.vertex_count = mesh->mNumVertices;
+    result.index_count = mesh->mNumFaces * 3; // @Important: A face could be connected by more than 3 vertices, but if we use aiProcess_Triangulate flag when loading with assimp, then we can always be sure that a face is always a triangle.
+
+
+    result.vertices = (Vertex*) SliceRegion16(&global_mesh_memory, result.vertex_count * sizeof(Vertex));
+    result.indices = (u32*)     SliceRegion16(&global_mesh_memory, result.index_count * sizeof(u32));
+
+    // Fill the vertex array of the mesh
+    for(u32 vertex_index = 0; vertex_index < result.vertex_count; vertex_index++)
+    {
+        Vertex vertex;
+        vec3 v;
+        
+        v.x = mesh->mVertices[vertex_index].x;
+        v.y = mesh->mVertices[vertex_index].y;
+        v.z = mesh->mVertices[vertex_index].z;
+        vertex.position = v;
+
+        v.x = mesh->mNormals[vertex_index].x;
+        v.y = mesh->mNormals[vertex_index].y;
+        v.z = mesh->mNormals[vertex_index].z;
+        vertex.normal = v;
+        
+        if(mesh->mTextureCoords[0])
+        {
+            vertex.tex_coords.x = mesh->mTextureCoords[0][vertex_index].x;
+            vertex.tex_coords.y = mesh->mTextureCoords[0][vertex_index].y;                        
+        }
+        else
+            vertex.tex_coords = create_vec2(0.0f, 0.0f);
+
+        
+        result.vertices[vertex_index] = vertex;        
+
+    }
+
+    // Fill the index array of the mesh
+    u32 *indice = result.indices;
+    for(u32 indice_index = 0; indice_index < result.index_count; indice_index += 3)
+    {
+        struct aiFace face = mesh->mFaces[indice_index / 3];
+        *indice++ = face.mIndices[0];
+        *indice++ = face.mIndices[1];
+        *indice++ = face.mIndices[2];                
+
+    }
+
+    // Find a texture and store it
+    if(mesh->mMaterialIndex >= 0)
+    {
+        struct aiMaterial *mat = scene->mMaterials[mesh->mMaterialIndex];
+        if(mat)
+        {
+            u32 diffuse_map_count = aiGetMaterialTextureCount(mat, aiTextureType_DIFFUSE);
+            u32 specular_map_count = aiGetMaterialTextureCount(mat, aiTextureType_DIFFUSE);
+
+            u32 texture_index = 0;
+            result.texture_count = diffuse_map_count + specular_map_count;
+
+            // @Note: There should be something to allocate, otherwise 'mat' should be null?
+            result.textures = (Texture*)SliceRegion16(&global_mesh_memory, result.texture_count * sizeof(Texture));
+
+            // Load its different textures
+            // Let's start with diffuse maps and specular maps for now
+            for(u32 diffuse_index = 0; diffuse_index < diffuse_map_count; diffuse_index++)
+            {
+                
+                struct aiString str;
+                aiGetMaterialTexture(mat, aiTextureType_DIFFUSE, texture_index, &str,
+                                     0,0,0,0,0,0);
+                Texture texture;
+                texture.id = LoadTexture(str.data, true);
+                texture.type = "diffuse";
+                texture.path = str.data;
+                result.textures[texture_index++] = texture;
+            }
+
+            for(u32 specular_index = 0; specular_index < specular_map_count; specular_index++)
+            {
+                
+                struct aiString str;
+                aiGetMaterialTexture(mat, aiTextureType_SPECULAR, texture_index, &str,
+                                     0,0,0,0,0,0);
+                Texture texture;
+                texture.id = LoadTexture(str.data, true);
+                texture.type = "specular";
+                texture.path = str.data;
+                result.textures[texture_index++] = texture;
+            }            
+            
+        }
+        
+    }
+    else
+    {
+        result.texture_count = 0;
+    }
+
+    result.va = GenVertArr();
+    VertexBuffer vbo = GenVertBuf(result.vertices, result.vertex_count * sizeof(Vertex));
+    IndexBuffer ebo = GenIndexBuf(result.indices, result.index_count * sizeof(u32));
+
+    // The layout will have 3 attributes
+    VertexLayout va_layout = {0};
+    va_layout.attributes = (VertexAttribute*)SliceRegion16(&region1, 3 * sizeof(VertexAttribute));
+    
+    VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE); // Position
+    VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE); // Normal
+    VertLayoutPush(&va_layout, 2, GL_FLOAT, GL_FALSE); // Texture
+
+    BindVertArr(result.va);               
+    BindVertBuf(vbo);
+    BindIndBuf(ebo);
+    VABindLayout(&result.va, va_layout);
+    
+    UnbindVertArr();
+    UnbindVertBuf();
+    UnbindIndBuf();    
+
+    return result;
+}
+
+// We will process the nodes in a recursive manner
+void ProcessAssimpNode(Model *model, struct aiNode *node, const struct aiScene *scene)
+{
+    struct aiNode *root_node = scene->mRootNode;
+    
+    for(u32 node_mesh_index = 0; node_mesh_index < node->mNumMeshes; node_mesh_index++)
+    {
+        struct aiMesh *mesh = scene->mMeshes[node->mMeshes[node_mesh_index]];
+        model->meshes[model->mesh_count++] = CreateMeshFromAssimp(mesh, scene);
+    }
+
+    // Process children nodes
+    for(u32 child_index = 0; child_index < node->mNumChildren; child_index++)
+    {
+
+        ProcessAssimpNode(model, node->mChildren[child_index], scene);        
+    }
+
+}
+
+// Relative to the executable
+Model LoadModelFromAssimp(u8 *relative_path)
+{
+    Model result = {0};
+    result.path = relative_path;
+
+    const struct aiScene *scene = aiImportFile(relative_path, aiProcess_Triangulate);
+
+    assert(scene);
+    assert(scene->mFlags | AI_SCENE_FLAGS_INCOMPLETE);
+
+    struct aiNode *root_node = scene->mRootNode;
+    
+    result.mesh_count = 0;
+    result.meshes = (Mesh*) SliceRegion16(&global_mesh_memory, scene->mNumMeshes * sizeof(Mesh));
+    
+    // Begin by processing the root node    
+    ProcessAssimpNode(&result, root_node, scene);
+           
+    return result;
+}
 
 module void APIENTRY GLDebugOutput(GLenum source, GLenum type, GLuint id,
                               GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
     
     char *source_str, *type_str, *severity_str;
-
 
     switch(source)
     {
@@ -59,48 +317,8 @@ module void APIENTRY GLDebugOutput(GLenum source, GLenum type, GLuint id,
     
 }
 
-unsigned int load_texture(char* path, int flipped)
-{
-    // Setup Texture
-    unsigned int texture;
-    glGenTextures(1, &texture);
-
-    // Load our texture
-    int tex_width, tex_height, nr_channels;
-    unsigned char* tex_data = stbi_load(path, &tex_width, &tex_height, &nr_channels, 0);
-    
-    if(tex_data)
-    {
-        GLenum format;
-        
-        if (nr_channels == 3)
-            format = GL_RGB;
-        else if (nr_channels == 4)
-            format = GL_RGBA;
-
-        glBindTexture(GL_TEXTURE_2D, texture);
-        
-        glTexImage2D(GL_TEXTURE_2D, 0, format, tex_width, tex_height, 0, format, GL_UNSIGNED_BYTE, tex_data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-        
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        
-        glBindTexture(GL_TEXTURE_2D, 0);    
-        stbi_set_flip_vertically_on_load(flipped); // this image starts at top left            
-        stbi_image_free(tex_data);
-        
-        printf("Loaded texture: %s\n", path);
-    }
-    else printf("Texture was not loaded.\n");
-    
-    return texture;
-}
-
 // unit square, first quadrant of NDC
-module float quad_vert[] = {
+module f32 quad_vert[] = {
     0.0f, 1.0f, 0.0f, // (0, 1)
     1.0f, 0.0f, 0.0f, // (1, 0)
 
@@ -108,15 +326,9 @@ module float quad_vert[] = {
     1.0f, 1.0f, 0.0f, // (1, 1)
 };
 
-module unsigned int quad_indices[] = {
+module u32 quad_indices[] = {
     0, 1, 2,
     0, 1, 3,
-};
-    
-// Index Buffer
-module unsigned int indices[] = {  // note that we start from 0!
-    0, 1, 3,   // first triangle
-    1, 2, 3    // second triangle
 };
 
 #define box_padding 2.0f
@@ -145,24 +357,11 @@ module vec3 pointlight_positions[4][2] = {
     },        
 };
 
-module vec3 light_pos;
-module vec3 light_color;
-
-// Our primary VA for cube rendering
-module VertexArray va;
-module VertexArray light_va;
-
-module MemoryRegion region1;
-
-module int diffuse_map;
-module int specular_map;
-module int emission_map;
-
-extern AppState app_state;
-extern ShaderBank shaders;
+Model cassette;
 
 void render_init()
 {
+    gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);	    
     glViewport(0,0, app_state.window_width, app_state.window_height);
     glEnable(GL_DEPTH_TEST);
 
@@ -186,6 +385,7 @@ void render_init()
     register_shader("..\\src\\shaders\\cube.glsl", "cube");
     register_shader("..\\src\\shaders\\light.glsl", "light");
     register_shader("..\\src\\shaders\\ui.glsl", "ui");
+    register_shader("..\\src\\shaders\\default.glsl", "default");    
     
     if(!init_shader_bank())
     {
@@ -194,10 +394,16 @@ void render_init()
     }
 
     {
-        size_t region_size = MB(1);
+        size_t region_size = MB(10);
         InitRegion(&region1, ALLOC_MEM(region_size), region_size);
+
+        region_size = GB(1);
+        InitRegion(&global_mesh_memory, ALLOC_MEM(region_size), region_size);
     }
 
+    cassette = LoadModelFromAssimp("assets\\cassette\\cassette_model_4k.blend");
+
+#if 0    
     VertexLayout va_layout = {0};
     VertexBuffer cube_vb;
 
@@ -207,9 +413,9 @@ void render_init()
                 
     va_layout.attributes = (VertexAttribute*)SliceRegion16(&region1, 3 * sizeof(VertexAttribute));
     
-    VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE);
-    VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE);
-    VertLayoutPush(&va_layout, 2, GL_FLOAT, GL_FALSE);
+    VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE); // Position
+    VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE); // Normal
+    VertLayoutPush(&va_layout, 2, GL_FLOAT, GL_FALSE); // Texture
 
     BindVertArr(va);               
     BindVertBuf(cube_vb);
@@ -235,7 +441,7 @@ void render_init()
 
 #if 0
     
-    // UI
+    // UI  
     glGenVertexArrays(1, &ui_VAO);
     glBindVertexArray(ui_VAO);
 
@@ -264,22 +470,32 @@ void render_init()
        glBindBuffer(GL_ARRAY_BUFFER, 0);
     */
 
-    diffuse_map = load_texture("assets\\container2.png", 1);
-    specular_map = load_texture("assets\\container2_specular.png", 1);
-    emission_map = load_texture("assets\\container2_emission.jpg", 0);    
+    render_assets.diffuse_map = LoadTexture("assets\\container2.png", 1);
+    render_assets.specular_map = LoadTexture("assets\\container2_specular.png", 1);
+    render_assets.emission_map = LoadTexture("assets\\container2_emission.jpg", 0);    
 
     // Update texture units in our fragment shader
     use_program_name("cube");
     set_int("material.diffuse", 0);
     set_int("material.specular", 1);
-    set_int("material.emission", 2);    
+    set_int("material.emission", 2);
+    
+#endif
 
     light_pos = create_vec3(0.0f, 0.0f, 0.0f);
     light_color = create_vec3(0.0f, 1.0f, 1.0f);
 
+    vec3 cam_pos, cam_dir, cam_up;
+    
+    cam_pos = create_vec3(0.0f, 0.0f, 5.0f);
+    cam_dir = create_vec3(0.0f, 0.0f, -1.0f);
+    cam_up = create_vec3(0.0f, 1.0f, 0.0f);
+        
+    create_camera(&render_manager.cam, cam_pos, cam_dir, cam_up, app_state.fov, 1.0f);
+
 }
 
-void render(float dt, Camera *cam)
+void render(float dt)
 {
     
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -290,16 +506,33 @@ void render(float dt, Camera *cam)
     vec3 rotation_axis, trans_vec;
 
     // Calculate perspective projection matrix
-    projection = perspective(RADIANS(cam->fov), (float)app_state.window_width/(float)app_state.window_height, 0.1f, 100.0f);        
-        
+    projection = perspective(RADIANS(render_manager.cam.fov), (float)app_state.window_width/(float)app_state.window_height, 0.1f, 100.0f);
+    
 #if 0
     /* Translate scene forward */         
     create_vec3(0.0f, 0.0f, -3.0f);                        
     view = translate_mat4x4(view, transl_vec);
 #endif
 
-    view = get_camera_view_matrix(cam);        
+    view = get_camera_view_matrix(&render_manager.cam);
 
+    use_program_name("default");
+    model = create_diag_mat4x4(1.0f);
+    set_mat4f("model", model.matrix);
+    set_mat4f("view", view.matrix);
+    set_mat4f("projection", projection.matrix);
+
+    for(u32 mesh_index = 0; mesh_index < cassette.mesh_count; mesh_index++)
+    {
+        Mesh mesh = cassette.meshes[mesh_index];
+        VertexArray mesh_va = mesh.va;
+        BindVertArr(mesh_va);
+        
+        glDrawElements(GL_TRIANGLES, mesh.index_count, GL_UNSIGNED_INT, 0);
+    }
+    
+
+#if 0
     /* Render cube */
     use_program_name("cube");
 
@@ -308,13 +541,13 @@ void render(float dt, Camera *cam)
 
     // bind textures
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, diffuse_map);
+    glBindTexture(GL_TEXTURE_2D, render_assets.diffuse_map);
         
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, specular_map);
+    glBindTexture(GL_TEXTURE_2D, render_assets.specular_map);
 
     glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, emission_map);
+    glBindTexture(GL_TEXTURE_2D, render_assets.emission_map);
 
     /* Update uniforms  */
     float time_value = glfwGetTime();
@@ -338,7 +571,7 @@ void render(float dt, Camera *cam)
 #endif
         
     //set_float("u_time", time_value);        
-    set_vec3f("cam_pos", cam->position);
+    set_vec3f("cam_pos", render_manager.cam.position);
 
     set_float("material.shininess", 32.0f);
 
@@ -346,9 +579,9 @@ void render(float dt, Camera *cam)
         
     // Set directional light
     {        
-        set_vec3f("dir_light.direction", cam->direction);
+        set_vec3f("dir_light.direction", render_manager.cam.direction);
         set_vec3f("dir_light.phong.ambient", create_vec3(0.001f, 0.001f, 0.001f));
-        set_vec3f("dir_light.phong.diffuse", create_vec3(0.1f, 0.1f, 0.1f));
+        set_vec3f("dir_light.phong.diffuse", create_vec3(0.01f, 0.01f, 0.01f));
         set_vec3f("dir_light.phong.specular", create_vec3(0.5f, 0.5f, 0.5f));
     }
         
@@ -394,8 +627,8 @@ void render(float dt, Camera *cam)
         
     {
 
-        set_vec3f("spotlight.position", cam->position);
-        set_vec3f("spotlight.direction", cam->direction);            
+        set_vec3f("spotlight.position", render_manager.cam.position);
+        set_vec3f("spotlight.direction", render_manager.cam.direction);            
         set_float("spotlight.power", 15.0f);
         set_float("spotlight.cutoff", (float)cos(RADIANS(15.0f)));
         set_float("spotlight.outer_cutoff", (float)cos(RADIANS(18.0f)));
@@ -498,6 +731,8 @@ void render(float dt, Camera *cam)
         glBindVertexArray(ui_VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
+#endif
+
 #endif
     
 }

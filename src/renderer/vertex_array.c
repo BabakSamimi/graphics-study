@@ -1,4 +1,4 @@
-#include "glad/glad.h"
+#include "renderer.h"
 #include "vertex_array.h"
 
 VertexArray GenVertArr()

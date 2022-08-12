@@ -1,14 +1,14 @@
+#include "renderer.h"
 #include "index_buffer.h"
-#include "glad/glad.h"
 
-IndexBuffer GenIndexBuf(u32 *indices, u32 index_count)
+IndexBuffer GenIndexBuf(u32 *indices, u32 size)
 {
     IndexBuffer buf;
-    buf.index_count = index_count;
+    buf.index_count = size / sizeof(u32);
     glGenBuffers(1, &buf.renderer_id);
     
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf.renderer_id);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_count * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, indices, GL_STATIC_DRAW);
     
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
@@ -20,7 +20,7 @@ void BindIndBuf(IndexBuffer buf)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf.renderer_id);
 }
 
-void UnBindIndBuf(void)
+void UnbindIndBuf(void)
 {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }

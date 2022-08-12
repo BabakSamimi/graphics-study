@@ -14,9 +14,11 @@ uniform mat4 projection;
 void main()
 {
     gl_Position = projection * view * model * vec4(a_pos, 1.0);
+
     frag_pos = vec3(model * vec4(a_pos, 1.0)); // world-space coord
     normal = mat3(transpose(inverse(model))) * a_normal; // normal residing in world-space
     tex_coords = a_tex_coords;
+  
 }
 
 #endif
@@ -66,15 +68,14 @@ in vec3 normal; // Normal of the fragment. Fragments sitting in the same triangl
 in vec3 frag_pos;
 in vec2 tex_coords;
 
-out vec4 frag_color;
-
 uniform vec3 cam_pos;
 
 uniform DirectionalLight dir_light;
 uniform PointLight pointLights[4];
 uniform SpotLight spotlight;
-
 uniform Material material;
+
+out vec4 frag_color;
 
 vec3 CalculateDirLight(DirectionalLight light, vec3 normal, vec3 view_dir, Phong texels, float shininess)
 {
@@ -171,7 +172,7 @@ void main()
 
 
     // Gamma correction (?)
-    result = pow(result, vec3(1.0 / 2.2));
+    result = pow(result, vec3(1.0 / 2.2));    
     frag_color = vec4(result, 1.0);
 }
 #endif

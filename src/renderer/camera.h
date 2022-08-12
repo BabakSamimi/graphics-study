@@ -2,7 +2,6 @@
 #define CAMERA_H
 #include "../gfx_math.h"
 
-
 typedef enum
 {
     FORWARD, BACKWARD, LEFT, RIGHT

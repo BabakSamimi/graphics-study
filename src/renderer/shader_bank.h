@@ -8,7 +8,6 @@
 #include "..\gfx_math.h"
 #include "..\defines.h"
 
-
 #define MAX_SHADER_PROGRAMS 64
 
 typedef struct {
@@ -17,10 +16,10 @@ typedef struct {
     u8* paths[MAX_SHADER_PROGRAMS][2];
     
     /* Timestamp on last modification of the shader file */
-    time_t* mod;
+    time_t *mod;
     
     /* Programs := array of internal opengl ids on shader programs */
-    GLuint* programs;
+    GLuint *programs;
     u32 programs_count;
 
     u32 active_program_index;

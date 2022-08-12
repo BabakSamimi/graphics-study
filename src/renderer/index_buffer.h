@@ -8,9 +8,9 @@ typedef struct {
     u32 index_count;
 } IndexBuffer;
 
-IndexBuffer GenIndexBuf(u32 *indices, u32 index_count);
+IndexBuffer GenIndexBuf(u32 *indices, u32 size);
 
 void BindIndexBuf(IndexBuffer buf);
-void UnBindIndexBuf(void);
+void UnbindIndexBuf(void);
 
 #endif

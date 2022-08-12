@@ -1,7 +1,7 @@
+#include "renderer.h"
 #include "vertex_buffer.h"
-#include "glad/glad.h"
 
-VertexBuffer GenVertBuf(void *data, unsigned int size)
+VertexBuffer GenVertBuf(void *data, u32 size)
 {
     VertexBuffer buf;
     glGenBuffers(1, &buf.renderer_id);

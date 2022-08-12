@@ -1,14 +1,16 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
-#include "vertex_array.h"
-#include "vertex_buffer.h"
-#include "index_buffer.h"
-#include "camera.h"
+#include "glad/glad.h"
 
-#define ArrayCount(A) (sizeof((A)) / sizeof((A)[0]))
+// temporary
+typedef struct {
+    GLuint diffuse_map;
+    GLuint specular_map;
+    GLuint emission_map;
+} RenderAssets;
 
 void render_init();
-void render(float dt, Camera *cam);
+void render(float dt);
 
 #endif
