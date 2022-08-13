@@ -49,12 +49,11 @@ void update_camera_transform(Camera* cam, float x_offset, float y_offset)
     cam->right = normalize_vec3(cam->right);
 
     cam->up = cross_vec3(cam->right, cam->direction);
-    cam->up = normalize_vec3(cam->up);
 
 }
 mat4x4 get_camera_view_matrix(Camera* cam)
 {
-    vec3 cam_look_at = cam_look_at = add_vec3(cam->position, cam->direction);
+    vec3 cam_look_at = add_vec3(cam->position, cam->direction);
             
     return look_at(cam->position, cam_look_at, cam->up);
     

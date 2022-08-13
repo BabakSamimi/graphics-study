@@ -77,6 +77,7 @@ uniform Material material;
 
 out vec4 frag_color;
 
+//CalculateDirLight(dir_light, normal, view_dir, phong, material.shininess);
 vec3 CalculateDirLight(DirectionalLight light, vec3 normal, vec3 view_dir, Phong texels, float shininess)
 {
     vec3 light_dir = normalize(-light.direction);
