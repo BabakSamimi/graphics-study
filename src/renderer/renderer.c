@@ -132,8 +132,9 @@ void render_init()
         InitRegion(&mesh_memory, ALLOC_MEM(region_size), region_size);
     }
 
-    test_model = LoadModelFromAssimp(mesh_memory, "assets\\concrete_block\\concrete_block.fbx");
+    //test_model = LoadModelFromAssimp(mesh_memory, "assets\\concrete_block\\concrete_block.fbx");
     //test_model = LoadModelFromAssimp("assets\\cassette\\cassette_model_4k.blend");
+    test_model = LoadModelFromAssimp(mesh_memory, "assets\\sponza\\sponza.obj");
 
 #if 0
     
@@ -166,7 +167,7 @@ void render_init()
     cam_dir = create_vec3(0.0f, 0.0f, -1.0f);
     cam_up = create_vec3(0.0f, 1.0f, 0.0f);
         
-    create_camera(&render_manager.cam, cam_pos, cam_dir, cam_up, app_state.fov, 1.0f);
+    create_camera(&render_manager.cam, cam_pos, cam_dir, cam_up, app_state.fov, 100.0f);
 
 }
 
@@ -181,7 +182,7 @@ void render(float dt)
     vec3 rotation_axis, trans_vec;
 
     // Calculate perspective projection matrix
-    projection = perspective(RADIANS(render_manager.cam.fov), (float)app_state.window_width/(float)app_state.window_height, 0.1f, 100.0f);
+    projection = perspective(RADIANS(render_manager.cam.fov), (float)app_state.window_width/(float)app_state.window_height, 0.1f, 500.0f);
     
 #if 0
     /* Translate scene forward */         
@@ -193,6 +194,7 @@ void render(float dt)
 
     use_program_name("default");
     model = create_diag_mat4x4(1.0f);
+    model = scale_mat4x4(model, 0.3f, 0.3f, 0.3f);
     set_mat4f("model", model.matrix);
     set_mat4f("view", view.matrix);
     set_mat4f("projection", projection.matrix);
