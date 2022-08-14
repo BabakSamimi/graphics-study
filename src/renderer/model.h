@@ -1,6 +1,8 @@
 #ifndef MODEL_H
 #define MODEL_H
 
+#include <stdbool.h>
+
 #include "vertex_array.h"
 #include "..\memory.h"
 #include "..\gfx_math.h"
@@ -12,14 +14,29 @@ typedef struct {
     vec2 tex_coords;    
 } Vertex;
 
+typedef enum {
+    AMBIENT, DIFFUSE, SPECULAR
+} TexEnum;
+
 typedef struct {
     u32 id;
-    u8 *type;
-    u8 *path;
+    TexEnum type;
 } Texture;
 
 typedef struct {
+    u32 id;
+} DiffuseTexture;
+
+typedef struct {
+    u32 id;
+} SpecularTexture;
+
+typedef struct {
     vec3 diffuse, specular, ambient;
+    
+    DiffuseTexture diffuse_map;
+    SpecularTexture specular_map;
+    
     float shininess;
 } Material;
 
@@ -37,9 +54,9 @@ typedef struct {
 typedef struct {
     Mesh *meshes;
     u32 mesh_count;
-    u8 *path;
+    u8 model_folder_path[512];
 } Model;
 
-Model LoadModelFromAssimp(MemoryRegion memory, u8 *relative_path);
+Model LoadModelFromAssimp(MemoryRegion memory, u8 *model_folder, u8 *model_name);
 
 #endif

@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <string.h>
 
 #include "renderer.h"
 #include "model.h"
@@ -13,6 +14,25 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
+
+module char *asset_folder = "assets\\";
+
+// C-strings only
+void ConcatStrings(char *dest, char *buf1, char *buf2)
+{
+    while(*buf1)
+    {
+        *dest++ = *buf1++;
+    }
+
+    while(*buf2)
+    {
+        *dest++ = *buf2++;
+    }
+
+    *dest++ = 0;
+    
+}
 
 module u32 LoadTexture(u8 *path, s32 flipped)
 {
@@ -54,7 +74,7 @@ module u32 LoadTexture(u8 *path, s32 flipped)
     return texture;
 }
 
-module Mesh CreateMeshFromAssimp(MemoryRegion memory, struct aiMesh *mesh, const struct aiScene *scene)
+module Mesh CreateMeshFromAssimp(MemoryRegion memory, char *model_folder_path, struct aiMesh *mesh, const struct aiScene *scene)
 {
     Mesh result = {0};
     
@@ -125,26 +145,38 @@ module Mesh CreateMeshFromAssimp(MemoryRegion memory, struct aiMesh *mesh, const
         {
                 
             struct aiString str;
-            aiGetMaterialTexture(mat, aiTextureType_DIFFUSE, texture_index, &str,
+            aiGetMaterialTexture(mat, aiTextureType_DIFFUSE, diffuse_index, &str,
                                  0,0,0,0,0,0);
-            Texture texture;
-            texture.id = LoadTexture(str.data, true);
-            texture.type = "diffuse";
-            texture.path = str.data;
-            result.textures[texture_index++] = texture;
+            //Texture texture;
+            DiffuseTexture texture;
+            char texture_path[256];
+            
+            strcpy(texture_path, model_folder_path);
+            strcat(texture_path, str.data);
+            
+            texture.id = LoadTexture(texture_path, true);
+            //texture.type = DIFFUSE;
+            //result.textures[texture_index++] = texture;
+            result.material.diffuse_map = texture;
         }
 
         for(u32 specular_index = 0; specular_index < specular_map_count; specular_index++)
         {
                 
             struct aiString str;
-            aiGetMaterialTexture(mat, aiTextureType_SPECULAR, texture_index, &str,
+            aiGetMaterialTexture(mat, aiTextureType_SPECULAR, specular_index, &str,
                                  0,0,0,0,0,0);
-            Texture texture;
-            texture.id = LoadTexture(str.data, true);
-            texture.type = "specular";
-            texture.path = str.data;
-            result.textures[texture_index++] = texture;
+            //Texture texture;
+            SpecularTexture texture;
+            char texture_path[256];
+            
+            strcpy(texture_path, model_folder_path);
+            strcat(texture_path, str.data);
+                        
+            texture.id = LoadTexture(texture_path, true);
+            //texture.type = SPECULAR;
+            //result.textures[texture_index++] = texture;
+            result.material.specular_map = texture;            
         }            
 
         struct aiColor4D v;
@@ -209,7 +241,7 @@ module void ProcessAssimpNode(MemoryRegion memory, Model *model, struct aiNode *
     for(u32 node_mesh_index = 0; node_mesh_index < node->mNumMeshes; node_mesh_index++)
     {
         struct aiMesh *mesh = scene->mMeshes[node->mMeshes[node_mesh_index]];
-        model->meshes[model->mesh_count++] = CreateMeshFromAssimp(memory, mesh, scene);
+        model->meshes[model->mesh_count++] = CreateMeshFromAssimp(memory, model->model_folder_path, mesh, scene);
     }
 
     // Process children nodes
@@ -221,13 +253,23 @@ module void ProcessAssimpNode(MemoryRegion memory, Model *model, struct aiNode *
 
 }
 
-// Relative to the executable
-Model LoadModelFromAssimp(MemoryRegion memory, u8 *relative_path)
+// Relative to the asset folder
+Model LoadModelFromAssimp(MemoryRegion memory, u8 *model_folder, u8 *model_name)
 {
     Model result = {0};
-    result.path = relative_path;
 
-    const struct aiScene *scene = aiImportFile(relative_path, aiProcess_Triangulate);
+
+    char model_path[512];
+    strcpy(model_path, "assets\\");
+    strcat(model_path, model_folder);        
+    strcat(model_path, "\\");
+
+    // Store the relative path to the model folder
+    strcpy(result.model_folder_path, model_path);
+    
+    strcat(model_path, model_name);
+    
+    const struct aiScene *scene = aiImportFile(model_path, aiProcess_Triangulate);
 
     assert(scene);
     assert(scene->mFlags | AI_SCENE_FLAGS_INCOMPLETE);

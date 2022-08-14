@@ -33,6 +33,8 @@ module void APIENTRY GLDebugOutput(GLenum source, GLenum type, GLuint id,
 {
     
     char *source_str, *type_str, *severity_str;
+    return;
+    if(severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
 
     switch(source)
     {
@@ -112,10 +114,10 @@ void render_init()
 #endif
     
     // Compile shaders
+    register_shader("..\\src\\shaders\\default.glsl", "default");
+    register_shader("..\\src\\shaders\\ui.glsl", "ui");    
     register_shader("..\\src\\shaders\\cube.glsl", "cube");
     register_shader("..\\src\\shaders\\light.glsl", "light");
-    register_shader("..\\src\\shaders\\ui.glsl", "ui");
-    register_shader("..\\src\\shaders\\default.glsl", "default");    
     
     if(!init_shader_bank())
     {
@@ -134,7 +136,11 @@ void render_init()
 
     //test_model = LoadModelFromAssimp(mesh_memory, "assets\\concrete_block\\concrete_block.fbx");
     //test_model = LoadModelFromAssimp("assets\\cassette\\cassette_model_4k.blend");
-    test_model = LoadModelFromAssimp(mesh_memory, "assets\\sponza\\sponza.obj");
+    test_model = LoadModelFromAssimp(mesh_memory, "sponza", "sponza.obj");
+
+    use_program_name("default");
+    set_int("diffuse_map", 0);
+    set_int("specular_map", 1);   
 
 #if 0
     
@@ -167,7 +173,7 @@ void render_init()
     cam_dir = create_vec3(0.0f, 0.0f, -1.0f);
     cam_up = create_vec3(0.0f, 1.0f, 0.0f);
         
-    create_camera(&render_manager.cam, cam_pos, cam_dir, cam_up, app_state.fov, 100.0f);
+    create_camera(&render_manager.cam, cam_pos, cam_dir, cam_up, app_state.fov, 500.0f);
 
 }
 
@@ -182,7 +188,7 @@ void render(float dt)
     vec3 rotation_axis, trans_vec;
 
     // Calculate perspective projection matrix
-    projection = perspective(RADIANS(render_manager.cam.fov), (float)app_state.window_width/(float)app_state.window_height, 0.1f, 500.0f);
+    projection = perspective(RADIANS(render_manager.cam.fov), (float)app_state.window_width/(float)app_state.window_height, 0.1f, 5000.0f);
     
 #if 0
     /* Translate scene forward */         
@@ -194,7 +200,7 @@ void render(float dt)
 
     use_program_name("default");
     model = create_diag_mat4x4(1.0f);
-    model = scale_mat4x4(model, 0.3f, 0.3f, 0.3f);
+    model = scale_mat4x4(model, 1.0f, 1.0f, 1.0f);
     set_mat4f("model", model.matrix);
     set_mat4f("view", view.matrix);
     set_mat4f("projection", projection.matrix);
@@ -204,18 +210,24 @@ void render(float dt)
     set_vec3f("dir_light.ambient", create_vec3(0.1f, 0.1f, 0.1f));
     set_vec3f("dir_light.diffuse", create_vec3(0.5f, 0.5f, 0.5f));
     set_vec3f("dir_light.specular", create_vec3(0.5f, 0.5f, 0.5f));    
-
+      
     for(u32 mesh_index = 0; mesh_index < test_model.mesh_count; mesh_index++)
     {
         Mesh mesh = test_model.meshes[mesh_index];
+        Material mat = mesh.material;
 
-        set_vec3f("material.ambient", create_vec3(0.5f, 0.5f, 0.5f)); //mesh.material.ambient);
-        set_vec3f("material.diffuse", mesh.material.diffuse);
-        set_vec3f("material.specular", mesh.material.specular);
-        set_float("material.shininess", mesh.material.shininess);                
+        glActiveTexture(GL_TEXTURE0);                
+        glBindTexture(GL_TEXTURE_2D, mat.diffuse_map.id);
+
+        glActiveTexture(GL_TEXTURE1);                
+        glBindTexture(GL_TEXTURE_2D, mat.specular_map.id);
         
-        VertexArray mesh_va = mesh.va;
-        BindVertArr(mesh_va);
+        set_vec3f("material.ambient", create_vec3(0.5f, 0.5f, 0.5f)); //mesh.material.ambient);
+        set_vec3f("material.diffuse", mat.diffuse);
+        set_vec3f("material.specular", mat.specular);
+        set_float("material.shininess", mat.shininess);                
+        
+        BindVertArr(mesh.va);
         
         glDrawElements(GL_TRIANGLES, mesh.index_count, GL_UNSIGNED_INT, 0);
     }
