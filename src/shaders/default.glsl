@@ -54,12 +54,14 @@ uniform vec3 view_pos;
 
 uniform sampler2D diffuse_map;
 uniform sampler2D specular_map;
+uniform sampler2D ambient_map;
 
 void main()
 {
 
     vec3 diffuse_texel = texture(diffuse_map, tex_coord).rgb; 
     vec3 specular_texel = texture(specular_map, tex_coord).rgb;
+    vec3 ambient_texel = texture(ambient_map, tex_coord).rgb;
 
     vec3 dir_light_norm = normalize(-dir_light.direction);
     vec3 view_dir = normalize(view_pos - frag_pos);
@@ -69,7 +71,7 @@ void main()
     vec3 reflect_dir = reflect(-dir_light_norm, frag_normal);
     float specular_strength = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
 
-    vec3 ambient = dir_light.ambient  * material.ambient   * diffuse_texel;
+    vec3 ambient = dir_light.ambient  * material.ambient * ambient_texel;
     vec3 diffuse = diffuse_strength   * dir_light.diffuse  * material.diffuse * diffuse_texel;
     vec3 specular = specular_strength * dir_light.specular * material.specular * specular_texel;
 

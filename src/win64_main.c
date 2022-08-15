@@ -21,7 +21,6 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 #include "renderer/shader_bank.h"
 #include "renderer/renderer.h"
-#include "renderer/render_manager.h"
 #include "renderer/camera.h"
 
 #include "GLFW/glfw3.h"
@@ -31,7 +30,8 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 AppState app_state;
 extern ShaderBank shaders; // in shader_bank.c
-extern RenderManager render_manager; // in renderer.c
+//extern RenderManager render_manager; // in renderer.c
+extern Camera global_cam;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -196,23 +196,23 @@ s32 main(void)
             f32 x_offset = (app_state.mouse_x - app_state.mouse_last_x) * app_state.sensitivity;
             f32 y_offset = (app_state.mouse_last_y - app_state.mouse_y) * app_state.sensitivity;
 
-            update_camera_transform(&render_manager.cam, x_offset, y_offset);
+            update_camera_transform(&global_cam, x_offset, y_offset);
 
             app_state.mouse_last_x = app_state.mouse_x;
             app_state.mouse_last_y = app_state.mouse_y;            
-            render_manager.cam.fov = app_state.fov;
+            global_cam.fov = app_state.fov;
 
         }            
         
-        f32 walking_speed = render_manager.cam.speed * app_state.delta_time;
+        f32 walking_speed = global_cam.speed * app_state.delta_time;
         if(PRESSED(GLFW_KEY_W))
-            move_camera(&render_manager.cam, FORWARD, walking_speed);            
+            move_camera(&global_cam, FORWARD, walking_speed);            
         if(PRESSED(GLFW_KEY_S))
-            move_camera(&render_manager.cam, BACKWARD, -walking_speed);            
+            move_camera(&global_cam, BACKWARD, -walking_speed);            
         if(PRESSED(GLFW_KEY_A))
-            move_camera(&render_manager.cam, LEFT, walking_speed*0.8f);            
+            move_camera(&global_cam, LEFT, walking_speed*0.8f);            
         if(PRESSED(GLFW_KEY_D))
-            move_camera(&render_manager.cam, RIGHT, -walking_speed*0.8f);
+            move_camera(&global_cam, RIGHT, -walking_speed*0.8f);
 
         render(app_state.delta_time*1000.0f);
         

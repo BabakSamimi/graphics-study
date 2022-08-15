@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
 #include <memory.h> // memset
@@ -15,7 +16,7 @@
   
 */
 
-void InitRegion(MemoryRegion *region, void* backing_buffer, size_t size)
+void InitArena(ArenaMemory *region, void* backing_buffer, size_t size)
 {
     
     region->buffer = (unsigned char*) backing_buffer;
@@ -27,7 +28,7 @@ void InitRegion(MemoryRegion *region, void* backing_buffer, size_t size)
 }
 
 // 16-byte aligned memory region
-void *SliceRegion16(MemoryRegion *region, size_t slice_size)
+void *ArenaAlloc16(ArenaMemory *region, size_t slice_size)
 {
 
     void *result;
@@ -47,7 +48,13 @@ void *SliceRegion16(MemoryRegion *region, size_t slice_size)
 
     region->used += slice_size;    
     result = (void*)(curr_ptr + alignment_offset);
-    
+
+    printf("Took a slice of %zd bytes! Memory left of this region: %zd KiB\n", slice_size, (region->buffer_size - region->used)/1024);
     return result;
     
+}
+
+void ResetArena(ArenaMemory *region)
+{
+    region->used = 0;
 }

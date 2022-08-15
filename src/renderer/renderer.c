@@ -1,5 +1,5 @@
 #include "renderer.h"
-#include "render_manager.h"
+#include "camera.h"
 #include "vertex_array.h"
 #include "vertex_buffer.h"
 #include "index_buffer.h"
@@ -16,24 +16,21 @@
 
 module vec3 light_pos;
 module vec3 light_color;
+module vec3 light_dir;
+module Model test_model;
 
-// Our primary VA for cube rendering
-module VertexArray va;
-module VertexArray light_va;
+module ArenaMemory region1;
+module ArenaMemory scratch_memory;
 
-module RenderAssets render_assets;
-module MemoryRegion region1;
-
-RenderManager render_manager;
+Camera global_cam;
 extern AppState app_state;
 extern ShaderBank shaders;
 
 module void APIENTRY GLDebugOutput(GLenum source, GLenum type, GLuint id,
                               GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
-    
+
     char *source_str, *type_str, *severity_str;
-    return;
     if(severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
 
     switch(source)
@@ -88,9 +85,6 @@ module u32 quad_indices[] = {
     0, 1, 3,
 };
 
-
-Model test_model;
-
 void render_init()
 {
     gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);	    
@@ -125,22 +119,19 @@ void render_init()
         exit(0);
     }
     
-    MemoryRegion mesh_memory;
+    ArenaMemory mesh_memory;
     {
         size_t region_size = MB(10);
-        InitRegion(&region1, ALLOC_MEM(region_size), region_size);
+        InitArena(&region1, ALLOC_MEM(region_size), region_size);
 
         region_size = GB(1);
-        InitRegion(&mesh_memory, ALLOC_MEM(region_size), region_size);
+        InitArena(&mesh_memory, ALLOC_MEM(region_size), region_size);
+        
+        region_size = MB(256);
+        InitArena(&scratch_memory, ALLOC_MEM(region_size), region_size);        
     }
 
-    //test_model = LoadModelFromAssimp(mesh_memory, "assets\\concrete_block\\concrete_block.fbx");
-    //test_model = LoadModelFromAssimp("assets\\cassette\\cassette_model_4k.blend");
-    test_model = LoadModelFromAssimp(mesh_memory, "sponza", "sponza.obj");
-
-    use_program_name("default");
-    set_int("diffuse_map", 0);
-    set_int("specular_map", 1);   
+    test_model = LoadModelFromAssimp(&mesh_memory, &scratch_memory, "sponza", "sponza.obj");
 
 #if 0
     
@@ -166,14 +157,29 @@ void render_init()
     
     light_pos = create_vec3(0.0f, 3.0f, 1.0f);
     light_color = create_vec3(1.0f, 1.0f, 1.0f);
+    light_dir = normalize_vec3(create_vec3(0.3f, -1.0f, 0.));
+    
+    vec3 light_amb = create_vec3(0.1f, 0.1f, 0.1f);
+    vec3 light_diff = create_vec3(0.5f, 0.5f, 0.5f);
+    vec3 light_spec = create_vec3(0.5f, 0.5f, 0.5f);
 
+    use_program_name("default");
+    
+    set_int("diffuse_map", 0);
+    set_int("specular_map", 1);
+    set_int("ambient_map", 2);
+    
+    set_vec3f("dir_light.ambient", light_amb);
+    set_vec3f("dir_light.diffuse", light_diff);
+    set_vec3f("dir_light.specular", light_spec);
+    
     vec3 cam_pos, cam_dir, cam_up;
     
     cam_pos = create_vec3(0.0f, 0.0f, 2.0f);
     cam_dir = create_vec3(0.0f, 0.0f, -1.0f);
     cam_up = create_vec3(0.0f, 1.0f, 0.0f);
         
-    create_camera(&render_manager.cam, cam_pos, cam_dir, cam_up, app_state.fov, 500.0f);
+    create_camera(&global_cam, cam_pos, cam_dir, cam_up, app_state.fov, 1000.0f);
 
 }
 
@@ -188,7 +194,7 @@ void render(float dt)
     vec3 rotation_axis, trans_vec;
 
     // Calculate perspective projection matrix
-    projection = perspective(RADIANS(render_manager.cam.fov), (float)app_state.window_width/(float)app_state.window_height, 0.1f, 5000.0f);
+    projection = perspective(RADIANS(global_cam.fov), (float)app_state.window_width/(float)app_state.window_height, 0.1f, 5000.0f);
     
 #if 0
     /* Translate scene forward */         
@@ -196,7 +202,7 @@ void render(float dt)
     view = translate_mat4x4(view, transl_vec);
 #endif
 
-    view = get_camera_view_matrix(&render_manager.cam);
+    view = get_camera_view_matrix(&global_cam);
 
     use_program_name("default");
     model = create_diag_mat4x4(1.0f);
@@ -205,11 +211,10 @@ void render(float dt)
     set_mat4f("view", view.matrix);
     set_mat4f("projection", projection.matrix);
 
-    set_vec3f("view_pos", render_manager.cam.position);
-    set_vec3f("dir_light.direction", normalize_vec3(create_vec3(-2.0f, -1.0f, 0.0f)));
-    set_vec3f("dir_light.ambient", create_vec3(0.1f, 0.1f, 0.1f));
-    set_vec3f("dir_light.diffuse", create_vec3(0.5f, 0.5f, 0.5f));
-    set_vec3f("dir_light.specular", create_vec3(0.5f, 0.5f, 0.5f));    
+    set_vec3f("view_pos", global_cam.position);
+    float time = glfwGetTime();
+    set_vec3f("dir_light.direction", light_dir);
+
       
     for(u32 mesh_index = 0; mesh_index < test_model.mesh_count; mesh_index++)
     {
@@ -221,8 +226,11 @@ void render(float dt)
 
         glActiveTexture(GL_TEXTURE1);                
         glBindTexture(GL_TEXTURE_2D, mat.specular_map.id);
+
+        glActiveTexture(GL_TEXTURE2);                
+        glBindTexture(GL_TEXTURE_2D, mat.ambient_map.id);
         
-        set_vec3f("material.ambient", create_vec3(0.5f, 0.5f, 0.5f)); //mesh.material.ambient);
+        set_vec3f("material.ambient", mat.ambient);
         set_vec3f("material.diffuse", mat.diffuse);
         set_vec3f("material.specular", mat.specular);
         set_float("material.shininess", mat.shininess);                

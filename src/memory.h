@@ -19,9 +19,10 @@ typedef struct {
     unsigned char   *buffer;
     size_t          buffer_size; 
     size_t          used;
-} MemoryRegion;
+} ArenaMemory;
 
-void InitRegion(MemoryRegion *region, void *buffer, size_t size);
-void *SliceRegion16(MemoryRegion *region, size_t slice_size);
+void InitArena(ArenaMemory *region, void *buffer, size_t size);
+void *ArenaAlloc16(ArenaMemory *region, size_t slice_size);
+void ResetArena(ArenaMemory *region);
 
 #endif

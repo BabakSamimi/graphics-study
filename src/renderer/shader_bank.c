@@ -14,7 +14,7 @@ module const u8 *fragment_define = "#define FRAGMENT_SHADER\n";
 
 /* Buffer for shader source code, used for compiling shaders */
 module u8 *shader_src;
-module MemoryRegion mem_reg;
+module ArenaMemory mem_reg;
 
 ShaderBank shaders = {0};
 
@@ -39,11 +39,11 @@ void register_shader(char* path, char* name)
 
 bool init_shader_bank()
 {
-    InitRegion(&mem_reg, ALLOC_MEM(10*KB(64)), 10*KB(64));
+    InitArena(&mem_reg, ALLOC_MEM(10*KB(64)), 10*KB(64));
 
-    shader_src = (u8*)       SliceRegion16(&mem_reg, SHADER_BUFFER_SIZE * sizeof(unsigned char));
-    shaders.mod = (time_t*)             SliceRegion16(&mem_reg, shaders.programs_count * sizeof(time_t));
-    shaders.programs = (GLuint*)  SliceRegion16(&mem_reg, shaders.programs_count * sizeof(unsigned int));
+    shader_src = (u8*)       ArenaAlloc16(&mem_reg, SHADER_BUFFER_SIZE * sizeof(unsigned char));
+    shaders.mod = (time_t*)             ArenaAlloc16(&mem_reg, shaders.programs_count * sizeof(time_t));
+    shaders.programs = (GLuint*)  ArenaAlloc16(&mem_reg, shaders.programs_count * sizeof(unsigned int));
     shaders.active_program_index = 0;
     
     // Populate shader bank

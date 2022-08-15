@@ -14,49 +14,59 @@ typedef struct {
     vec2 tex_coords;    
 } Vertex;
 
-typedef enum {
-    AMBIENT, DIFFUSE, SPECULAR
-} TexEnum;
-
+// Id: opengl texture handle
+// hash: the hash of the relative path
 typedef struct {
     u32 id;
-    TexEnum type;
-} Texture;
-
-typedef struct {
-    u32 id;
+    u64 hash;
 } DiffuseTexture;
 
 typedef struct {
     u32 id;
+    u64 hash;    
 } SpecularTexture;
+
+typedef struct {
+    u32 id;
+    u64 hash;       
+} AmbientTexture;
 
 typedef struct {
     vec3 diffuse, specular, ambient;
     
     DiffuseTexture diffuse_map;
     SpecularTexture specular_map;
+    AmbientTexture ambient_map;
     
     float shininess;
 } Material;
 
 typedef struct {
-    Vertex  *vertices;
-    u32     *indices;
+    //Vertex  *vertices; // We don't need to store the vertex?
+    u32 *indices;
     
-    Texture *textures;
-    u32 vertex_count, index_count, texture_count;
+    u32 vertex_count, index_count;
+    
     Material material;
 
     VertexArray va;
 } Mesh;
 
+#define MAX_HASHES 64
+typedef struct {
+    u64 hash[MAX_HASHES]; // Hash (key)
+    u32 index[MAX_HASHES]; // Index to texture (value)
+
+    u32 count;
+} TextureHashes;
+
 typedef struct {
     Mesh *meshes;
     u32 mesh_count;
+    
     u8 model_folder_path[512];
 } Model;
 
-Model LoadModelFromAssimp(MemoryRegion memory, u8 *model_folder, u8 *model_name);
+Model LoadModelFromAssimp(ArenaMemory *memory, ArenaMemory *scratch, u8 *model_folder, u8 *model_name);
 
 #endif

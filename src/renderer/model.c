@@ -15,23 +15,19 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 
-module char *asset_folder = "assets\\";
+// 32-bit FNV
+#define FNV_OFFSET_BASIS 2166136261
+#define FNV_PRIME 16777619
 
-// C-strings only
-void ConcatStrings(char *dest, char *buf1, char *buf2)
+u64 fnv_1a(u8 *data, size_t size)
 {
-    while(*buf1)
-    {
-        *dest++ = *buf1++;
-    }
-
-    while(*buf2)
-    {
-        *dest++ = *buf2++;
-    }
-
-    *dest++ = 0;
-    
+	u64 hash = FNV_OFFSET_BASIS;
+	for(u8 index = 0; index < size; index++)
+	{
+		hash = (hash ^ data[index]) * FNV_PRIME;
+	}
+	
+	return hash;
 }
 
 module u32 LoadTexture(u8 *path, s32 flipped)
@@ -74,16 +70,21 @@ module u32 LoadTexture(u8 *path, s32 flipped)
     return texture;
 }
 
-module Mesh CreateMeshFromAssimp(MemoryRegion memory, char *model_folder_path, struct aiMesh *mesh, const struct aiScene *scene)
+module Mesh CreateMeshFromAssimp(ArenaMemory *scratch,
+                                 char *model_folder_path,
+                                 struct aiMesh *mesh,
+                                 const struct aiScene *scene)
 {
+    
     Mesh result = {0};
     
     result.vertex_count = mesh->mNumVertices;
     result.index_count = mesh->mNumFaces * 3; // @Important: A face could be connected by more than 3 vertices, but if we use aiProcess_Triangulate flag when loading with assimp, then we can always be sure that a face is always a triangle.
 
 
-    result.vertices = (Vertex*) SliceRegion16(&memory, result.vertex_count * sizeof(Vertex));
-    result.indices = (u32*)     SliceRegion16(&memory, result.index_count * sizeof(u32));
+    //result.vertices = (Vertex*) ArenaAlloc16(&memory, result.vertex_count * sizeof(Vertex));
+    Vertex  *vertices = (Vertex*) ArenaAlloc16(scratch, result.vertex_count * sizeof(Vertex));
+    result.indices =    (u32*)    ALLOC_MEM(result.index_count * sizeof(u32));
 
     // Fill the vertex array of the mesh
     for(u32 vertex_index = 0; vertex_index < result.vertex_count; vertex_index++)
@@ -108,9 +109,8 @@ module Mesh CreateMeshFromAssimp(MemoryRegion memory, char *model_folder_path, s
         }
         else
             vertex.tex_coords = create_vec2(0.0f, 0.0f);
-
         
-        result.vertices[vertex_index] = vertex;        
+        vertices[vertex_index] = vertex;        
 
     }
 
@@ -132,22 +132,57 @@ module Mesh CreateMeshFromAssimp(MemoryRegion memory, char *model_folder_path, s
 
         u32 diffuse_map_count = aiGetMaterialTextureCount(mat, aiTextureType_DIFFUSE);
         u32 specular_map_count = aiGetMaterialTextureCount(mat, aiTextureType_SPECULAR);
+        u32 ambient_map_count = aiGetMaterialTextureCount(mat, aiTextureType_AMBIENT);
 
-        u32 texture_index = 0;
-        result.texture_count = diffuse_map_count + specular_map_count;
+        //result.texture_count = diffuse_map_count + specular_map_count + ambient_map_count;
 
         // @Note: There should be something to allocate, otherwise 'mat' should be null?
-        result.textures = (Texture*)SliceRegion16(&memory, result.texture_count * sizeof(Texture));
+        //result.textures = (Texture*)ArenaAlloc16(&memory, resuglt.texture_count * sizeof(Texture));
 
         // Load its different textures
         // Let's start with diffuse maps and specular maps for now
-        for(u32 diffuse_index = 0; diffuse_index < diffuse_map_count; diffuse_index++)
+
+#if 0
+        struct aiString diff_path, amb_path, spec_path;
+        u64 path_hash = 0;
+        
+        if(diffuse_map_count > 0 && aiGetMaterialTexture(mat, aiTextureType_DIFFUSE, 0, &diff_path,
+                                 0,0,0,0,0,0))
         {
-                
+            Texture tex = {0};
+            tex.type = TEX_DIFFUSE;
+            char texture_path[256];
+            
+            strcpy(texture_path, model_folder_path);
+            strcat(texture_path, diff_path.data);
+            u64 hash = fnv_1a(diff_path.data, diff_path.length);
+            
+            // Find out if hash already exists
+            
+            
+            tex.id = LoadTexture(texture_path, true);
+            
+        }
+
+        if(ambient_map_count > 0 && aiGetMaterialTexture(mat, aiTextureType_AMBIENT, 0, &amb_path,
+                                 0,0,0,0,0,0))
+        {
+            
+        }
+
+        if(specular_map_count > 0 && aiGetMaterialTexture(mat, aiTextureType_SPECULAR, 0, &spec_path,
+                                 0,0,0,0,0,0))
+        {
+            
+        }                
+#endif
+        
+        if(diffuse_map_count > 0)
+        {
             struct aiString str;
-            aiGetMaterialTexture(mat, aiTextureType_DIFFUSE, diffuse_index, &str,
+            aiGetMaterialTexture(mat, aiTextureType_DIFFUSE, 0, &str,
                                  0,0,0,0,0,0);
-            //Texture texture;
+            
             DiffuseTexture texture;
             char texture_path[256];
             
@@ -155,18 +190,36 @@ module Mesh CreateMeshFromAssimp(MemoryRegion memory, char *model_folder_path, s
             strcat(texture_path, str.data);
             
             texture.id = LoadTexture(texture_path, true);
-            //texture.type = DIFFUSE;
-            //result.textures[texture_index++] = texture;
-            result.material.diffuse_map = texture;
+            //texture.hash = fnv_1a(str.data, str.length); 
+
+            result.material.diffuse_map = texture;            
         }
 
-        for(u32 specular_index = 0; specular_index < specular_map_count; specular_index++)
+        if(ambient_map_count > 0)
         {
                 
             struct aiString str;
-            aiGetMaterialTexture(mat, aiTextureType_SPECULAR, specular_index, &str,
+            aiGetMaterialTexture(mat, aiTextureType_AMBIENT, 0, &str,
                                  0,0,0,0,0,0);
-            //Texture texture;
+            
+            AmbientTexture texture;
+            char texture_path[256];
+            
+            strcpy(texture_path, model_folder_path);
+            strcat(texture_path, str.data);
+            
+            texture.id = LoadTexture(texture_path, true);
+            result.material.ambient_map = texture;
+        }
+        
+
+        if(specular_map_count > 0)
+        {
+                
+            struct aiString str;
+            aiGetMaterialTexture(mat, aiTextureType_SPECULAR, 0, &str,
+                                 0,0,0,0,0,0);
+
             SpecularTexture texture;
             char texture_path[256];
             
@@ -174,10 +227,8 @@ module Mesh CreateMeshFromAssimp(MemoryRegion memory, char *model_folder_path, s
             strcat(texture_path, str.data);
                         
             texture.id = LoadTexture(texture_path, true);
-            //texture.type = SPECULAR;
-            //result.textures[texture_index++] = texture;
             result.material.specular_map = texture;            
-        }            
+        }
 
         struct aiColor4D v;
         if(AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE, &v))
@@ -204,18 +255,14 @@ module Mesh CreateMeshFromAssimp(MemoryRegion memory, char *model_folder_path, s
             result.material.shininess = 32.0f;
         
     }
-    else
-    {
-        result.texture_count = 0;
-    }
 
     result.va = GenVertArr();
-    VertexBuffer vbo = GenVertBuf(result.vertices, result.vertex_count * sizeof(Vertex));
+    VertexBuffer vbo = GenVertBuf(vertices, result.vertex_count * sizeof(Vertex));
     IndexBuffer ebo = GenIndexBuf(result.indices, result.index_count * sizeof(u32));
 
     // The layout will have 3 attributes
     VertexLayout va_layout = {0};
-    va_layout.attributes = (VertexAttribute*)SliceRegion16(&memory, 3 * sizeof(VertexAttribute));
+    va_layout.attributes = (VertexAttribute*)ArenaAlloc16(scratch, 3 * sizeof(VertexAttribute));
     
     VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE); // Position
     VertLayoutPush(&va_layout, 3, GL_FLOAT, GL_FALSE); // Normal
@@ -234,30 +281,34 @@ module Mesh CreateMeshFromAssimp(MemoryRegion memory, char *model_folder_path, s
 }
 
 // We will process the nodes in a recursive manner
-module void ProcessAssimpNode(MemoryRegion memory, Model *model, struct aiNode *node, const struct aiScene *scene)
+module void ProcessAssimpNode(ArenaMemory *scratch,
+                              Model *model,
+                              struct aiNode *node,
+                              const struct aiScene *scene)
 {
+    static u32 mesh_index = 0;
+    
     struct aiNode *root_node = scene->mRootNode;
     
     for(u32 node_mesh_index = 0; node_mesh_index < node->mNumMeshes; node_mesh_index++)
     {
         struct aiMesh *mesh = scene->mMeshes[node->mMeshes[node_mesh_index]];
-        model->meshes[model->mesh_count++] = CreateMeshFromAssimp(memory, model->model_folder_path, mesh, scene);
+        model->meshes[model->mesh_count++] = CreateMeshFromAssimp(scratch, model->model_folder_path, mesh, scene);
     }
 
     // Process children nodes
     for(u32 child_index = 0; child_index < node->mNumChildren; child_index++)
     {
 
-        ProcessAssimpNode(memory, model, node->mChildren[child_index], scene);        
+        ProcessAssimpNode(scratch, model, node->mChildren[child_index], scene);        
     }
 
 }
 
 // Relative to the asset folder
-Model LoadModelFromAssimp(MemoryRegion memory, u8 *model_folder, u8 *model_name)
+Model LoadModelFromAssimp(ArenaMemory *mesh_memory, ArenaMemory *scratch, u8 *model_folder, u8 *model_name)
 {
     Model result = {0};
-
 
     char model_path[512];
     strcpy(model_path, "assets\\");
@@ -276,11 +327,15 @@ Model LoadModelFromAssimp(MemoryRegion memory, u8 *model_folder, u8 *model_name)
 
     struct aiNode *root_node = scene->mRootNode;
     
+    // Allocate enough meshes for our model
     result.mesh_count = 0;
-    result.meshes = (Mesh*) SliceRegion16(&memory, scene->mNumMeshes * sizeof(Mesh));
+    result.meshes = (Mesh*) ArenaAlloc16(mesh_memory, scene->mNumMeshes * sizeof(Mesh));
+    
+    // When loading a model, we will cache up to 64 hashes of the image path
+    TextureHashes tex_hashes = {0};
     
     // Begin by processing the root node
-    ProcessAssimpNode(memory, &result, root_node, scene);
+    ProcessAssimpNode(scratch, &result, root_node, scene);
            
     return result;
 }
