@@ -42,7 +42,7 @@ typedef struct {
 } Material;
 
 typedef struct {
-    //Vertex  *vertices; // We don't need to store the vertex?
+    //Vertex  *vertices; // We don't need to store vertices on the CPU side after we upload it to the GPU?
     u32 *indices;
     
     u32 vertex_count, index_count;

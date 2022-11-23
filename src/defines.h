@@ -16,8 +16,6 @@ typedef int64_t s64;
 typedef float f32;
 typedef double f64;
 
-#define module static
-
 #define ArrayCount(A) (sizeof((A)) / sizeof((A)[0]))
 
 #endif

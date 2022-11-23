@@ -14,19 +14,19 @@
 
 #include "GLFW/glfw3.h"
 
-module vec3 light_pos;
-module vec3 light_color;
-module vec3 light_dir;
-module Model test_model;
+static vec3 light_pos;
+static vec3 light_color;
+static vec3 light_dir;
+static Model test_model;
 
-module ArenaMemory region1;
-module ArenaMemory scratch_memory;
+static ArenaMemory region1;
+static ArenaMemory scratch_memory;
 
 Camera global_cam;
 extern AppState app_state;
 extern ShaderBank shaders;
 
-module void APIENTRY GLDebugOutput(GLenum source, GLenum type, GLuint id,
+static void APIENTRY GLDebugOutput(GLenum source, GLenum type, GLuint id,
                               GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
 
@@ -72,7 +72,7 @@ module void APIENTRY GLDebugOutput(GLenum source, GLenum type, GLuint id,
 }
 
 // unit square, first quadrant of NDC
-module f32 quad_vert[] = {
+static f32 quad_vert[] = {
     0.0f, 1.0f, 0.0f, // (0, 1)
     1.0f, 0.0f, 0.0f, // (1, 0)
 
@@ -80,7 +80,7 @@ module f32 quad_vert[] = {
     1.0f, 1.0f, 0.0f, // (1, 1)
 };
 
-module u32 quad_indices[] = {
+static u32 quad_indices[] = {
     0, 1, 2,
     0, 1, 3,
 };
@@ -131,6 +131,7 @@ void render_init()
         InitArena(&scratch_memory, ALLOC_MEM(region_size), region_size);        
     }
 
+    use_program(0);
     test_model = LoadModelFromAssimp(&mesh_memory, &scratch_memory, "sponza", "sponza.obj");
 
 #if 0
@@ -155,7 +156,7 @@ void render_init()
 
 #endif
     
-    light_pos = create_vec3(0.0f, 3.0f, 1.0f);
+    light_pos = create_vec3(0.0f, 3.0f, 0.0f);
     light_color = create_vec3(1.0f, 1.0f, 1.0f);
     light_dir = normalize_vec3(create_vec3(0.3f, -1.0f, 0.));
     
@@ -207,22 +208,28 @@ void render(float dt)
     use_program_name("default");
     model = create_diag_mat4x4(1.0f);
     model = scale_mat4x4(model, 1.0f, 1.0f, 1.0f);
+    
     set_mat4f("model", model.matrix);
     set_mat4f("view", view.matrix);
     set_mat4f("projection", projection.matrix);
 
     set_vec3f("view_pos", global_cam.position);
-    float time = glfwGetTime();
     set_vec3f("dir_light.direction", light_dir);
 
-      
+    float time = glfwGetTime();    
+
+    // Iterate through every mesh of a model
+    // Bind every mesh and its material and draw it
+    // Obviously this is not a good way to draw a 3D model!
+
+    //glBindTexture(GL_TEXTURE_2D, 0);
     for(u32 mesh_index = 0; mesh_index < test_model.mesh_count; mesh_index++)
     {
         Mesh mesh = test_model.meshes[mesh_index];
         Material mat = mesh.material;
 
         glActiveTexture(GL_TEXTURE0);                
-        glBindTexture(GL_TEXTURE_2D, mat.diffuse_map.id);
+        glBindTexture(GL_TEXTURE_2D, mat.diffuse_map.id);            
 
         glActiveTexture(GL_TEXTURE1);                
         glBindTexture(GL_TEXTURE_2D, mat.specular_map.id);
@@ -239,8 +246,7 @@ void render(float dt)
         
         glDrawElements(GL_TRIANGLES, mesh.index_count, GL_UNSIGNED_INT, 0);
     }
-    
-        
+
 #if 0        
     // UI
     {        
@@ -255,7 +261,6 @@ void render(float dt)
         // Size and scaling
         float rect_width = 500.0f;
         float rect_height = 200.0f;            
-
         float rect_width_ndc = rect_width / app_state.window_width;
         float rect_height_ndc = rect_height / app_state.window_height;        
 

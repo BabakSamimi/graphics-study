@@ -4,21 +4,21 @@
 #include "shader_bank.h"
 #include "..\memory.h"
 
-module const u8 *version_define = "#version 460 core\n";
-module const u8 *vertex_define = "#define VERTEX_SHADER\n";
-module const u8 *fragment_define = "#define FRAGMENT_SHADER\n";
+static const u8 *version_define = "#version 460 core\n";
+static const u8 *vertex_define = "#define VERTEX_SHADER\n";
+static const u8 *fragment_define = "#define FRAGMENT_SHADER\n";
 
 #define SHADER_BUFFER_SIZE (8*1024)
 #define SHADER_LOG_SIZE (1*1024)
 // #define DEBUG_PRINT_SOURCE
 
 /* Buffer for shader source code, used for compiling shaders */
-module u8 *shader_src;
-module ArenaMemory mem_reg;
+static u8 *shader_src;
+static ArenaMemory mem_reg;
 
 ShaderBank shaders = {0};
 
-module int FILE_size(FILE* fp)
+static int FILE_size(FILE* fp)
 {
     s32 result;
     

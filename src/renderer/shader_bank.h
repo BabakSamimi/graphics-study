@@ -26,7 +26,7 @@ typedef struct {
     
 } ShaderBank;
 
-module int FILE_size(FILE* fp);
+static int FILE_size(FILE* fp);
 void register_shader(char* path, char* name);
 bool init_shader_bank();
 bool reload_shader_bank();

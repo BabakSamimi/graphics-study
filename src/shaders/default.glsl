@@ -20,7 +20,6 @@ void main()
     
     gl_Position = projection * view * model * vec4(pos_attr, 1.0);
     
-
 }
 
 #endif

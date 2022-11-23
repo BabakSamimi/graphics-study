@@ -30,7 +30,7 @@ u64 fnv_1a(u8 *data, size_t size)
 	return hash;
 }
 
-module u32 LoadTexture(u8 *path, s32 flipped)
+static u32 LoadTexture(u8 *path, s32 flipped)
 {
     // Setup Texture
     GLuint texture;
@@ -70,7 +70,7 @@ module u32 LoadTexture(u8 *path, s32 flipped)
     return texture;
 }
 
-module Mesh CreateMeshFromAssimp(ArenaMemory *scratch,
+static Mesh CreateMeshFromAssimp(ArenaMemory *scratch,
                                  char *model_folder_path,
                                  struct aiMesh *mesh,
                                  const struct aiScene *scene)
@@ -281,7 +281,7 @@ module Mesh CreateMeshFromAssimp(ArenaMemory *scratch,
 }
 
 // We will process the nodes in a recursive manner
-module void ProcessAssimpNode(ArenaMemory *scratch,
+static void ProcessAssimpNode(ArenaMemory *scratch,
                               Model *model,
                               struct aiNode *node,
                               const struct aiScene *scene)
